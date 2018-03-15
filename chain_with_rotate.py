@@ -1,4 +1,7 @@
-from penta_with_rotate import get_penta_points, find_section, find_section_and_rotate, show_points, rotate_by_basis, show_named_points
+from penta_with_rotate import get_penta_points, find_section, find_section_and_rotate,\
+    show_points, rotate_by_basis, show_named_points
+from one_way_chain import dimensional_corrected_structure
+
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -58,6 +61,35 @@ def dimensional_structure(chain_v):
                 poper.insert(0, i[0])
                 p.append(poper)
     return dim_structure, chain_v
+
+
+def coordinates_to_notation(info_from_file):
+    '''
+    :param info_from_file: read_from_file tuple
+    :return: chain in dictionary notation (see above)
+    '''
+    positions, names = info_from_file
+    positions_copy = copy.deepcopy(positions)
+    notation = {}
+    for key, item in positions.items():
+        cur_p = positions_copy.pop(key)
+        connected = [k for k, ite in positions.items() if abs(np.linalg.norm(ite-cur_p)-1)<eps_length]
+        sections = []
+        basis = np.zeros(2)
+        if key == 1:
+            for i in connected:
+                sections.append((find_section(cur_p, positions[i]), 0, 0))
+        else:
+            for i in connected:
+                s, b0, b1 = find_section_and_rotate(cur_p, positions[i])[::]
+                basis = np.array([b0, b1])
+                sections.append(find_section_and_rotate(cur_p, positions[i]))
+        app = []
+        for inx in range(len(connected)):
+            app.append([connected[inx], sections[inx][0]])
+        notation.update({key: [[a for a in app], basis]})
+    return notation, names
+
 ##############################################################################################
 
 
@@ -69,6 +101,7 @@ def write_xyz_file(file_name, names, positions):
     :return: None, void write function
     '''
     with open(file_name, 'w') as f1:
+        f1.write(str(len(names))+'\n')
         for key, item in names.items():
             f1.write("{0}\t{1}\t{2}\t{3}\n".format(item, str(positions[key][0][0]),str(positions[key][0][1]),str(positions[key][0][2])))
 
@@ -110,9 +143,9 @@ def read_xyz_file(file):
         positions = {}
         for i in range(n):
             line = file.readline().split()
-            names.update({i: line[0]})
+            names.update({i+1: line[0]})
             x, y, z = [float(j) for j in line[1::]]
-            positions.update({i: [x,y,z]})
+            positions.update({i+1: np.array([x,y,z])})
     return positions, names
 
 def show_dim_chain(dim_struct, annotate=False, dict=None):
@@ -134,8 +167,12 @@ def show_dim_chain(dim_struct, annotate=False, dict=None):
 if __name__ == '__main__':
     struct = chain2()[0]
     # positions, bonds = dimensional_structure(struct)
-    print(dimensional_structure(struct))
-    # print(bonds)
+    dim_st = dimensional_structure(struct)[0]
+    # print(dim_st[0])
+    names = chain2()[1]
+    write_xyz_file('input_chain2.txt', names, dim_st)
+    print(coordinates_to_notation(read_xyz_file('input_chain2.txt')))
+
     # bonds_shower(positions, bonds)
     # show_with_bonds(chain2()[0], positions)
     # write_xyz_file('input.txt', chain2()[1], dimensional_corrected_structure(struct)[0])
