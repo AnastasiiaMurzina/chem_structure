@@ -76,11 +76,10 @@ def coordinates_to_notation(info_from_file):
         connected = [k for k, ite in positions.items() if abs(np.linalg.norm(ite-cur_p)-1)<eps_length]
         sections = []
         basis = np.zeros(2)
-        if key == 1:
-            for i in connected:
+        for i in connected:
+            if key == 1:
                 sections.append((find_section(cur_p, positions[i]), 0, 0))
-        else:
-            for i in connected:
+            else:
                 s, b0, b1 = find_section_and_rotate(cur_p, positions[i])[::]
                 basis = np.array([b0, b1])
                 sections.append(find_section_and_rotate(cur_p, positions[i]))
