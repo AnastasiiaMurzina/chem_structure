@@ -1,5 +1,5 @@
 from penta_with_rotate import get_penta_points, find_section, find_section_and_rotate,\
-    show_points, rotate_by_basis, show_named_points
+    show_points, rotate_by_basis, show_named_points, get_reversed_section_and_basis
 from one_way_chain import dimensional_corrected_structure
 
 import numpy as np
@@ -63,7 +63,7 @@ def dimensional_structure(chain_v):
     return dim_structure, chain_v
 
 
-def coordinates_to_notation(info_from_file):
+def coordinates_to_notation(info_from_file, valid_length = eps_length):
     '''
     :param info_from_file: read_from_file tuple
     :return: chain in dictionary notation (see above)
@@ -73,13 +73,14 @@ def coordinates_to_notation(info_from_file):
     notation = {}
     for key, item in positions.items():
         cur_p = positions_copy.pop(key)
-        connected = [k for k, ite in positions.items() if abs(np.linalg.norm(ite-cur_p)-1)<eps_length]
+        connected = [k for k, ite in positions.items() if abs(np.linalg.norm(ite-cur_p)-1)<valid_length]
         sections = []
         basis = np.zeros(2)
         for i in connected:
             if key == 1:
                 sections.append((find_section(cur_p, positions[i]), 0, 0))
             else:
+                # print(cur_p, positions[i])
                 s, b0, b1 = find_section_and_rotate(cur_p, positions[i])[::]
                 basis = np.array([b0, b1])
                 sections.append(find_section_and_rotate(cur_p, positions[i]))
@@ -87,6 +88,17 @@ def coordinates_to_notation(info_from_file):
         for inx in range(len(connected)):
             app.append([connected[inx], sections[inx][0]])
         notation.update({key: [[a for a in app], basis]})
+#########################################################
+    upd = []
+    if notation[1][0][0][1] == None:
+        for num, i in enumerate(notation[1][0]):
+            if i[1] == None:
+                upd.append([i[0], get_reversed_section_and_basis(notation[i[0]][0][0][1], notation[i[0]][1])])
+        bss = []
+        for i in upd:
+            bss.append(np.array([i[1][1], i[1][2]]))
+        notation.update({1: [[[i[0], i[1][0]] for i in upd], bss]})
+##################################################
     return notation, names
 
 ##############################################################################################

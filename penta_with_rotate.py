@@ -2,7 +2,7 @@ from math import acos, sin, pi, cos, atan, asin
 import matplotlib.pyplot as plt
 import numpy as np
 from itertools import product
-
+from copy import deepcopy
 '''
 Describe division: first parameter of bond is section [0..11]
 second parameter is rotate by two numbers [0..n_y-1, 0..n_z-1]
@@ -187,6 +187,7 @@ def find_section_and_rotate(p0, p1):
     '''
     wanted = p0 - p1
     sums = []
+    wanted /= np.linalg.norm(wanted)
     available_sections_y = tuple(range(n_y))
     available_sections_z = tuple(range(n_z))
     for num, i in enumerate(pp):
@@ -200,11 +201,16 @@ def find_section_and_rotate(p0, p1):
             sums.append([s, num])
     # possible problems: 0 and 6 sections
     sums.sort()
-    while len(sums):
-        ps = sums.pop(0)
-        for j in sorted(product(available_sections_y, available_sections_z), key=lambda x: sum(x)):
-            if np.linalg.norm(rotate_by_basis(pp[ps[1]], j[0], j[1]) - wanted) < step_rot:
-                return ps[1], j[0], j[1]
+    sums2 = deepcopy(sums)
+    eps_rot = step_rot
+    while True:
+        sums = deepcopy(sums2)
+        while len(sums):
+            ps = sums.pop(0)
+            for j in sorted(product(available_sections_y, available_sections_z), key=lambda x: sum(x)):
+                if np.linalg.norm(rotate_by_basis(pp[ps[1]], j[0], j[1]) - wanted) < eps_rot:
+                    return ps[1], j[0], j[1]
+        eps_rot*=1.2
 
     # return ps[1], None
 
@@ -217,6 +223,7 @@ def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot):
     :return: section of p0 atom in which there's p1
     '''
     vec = p1 - p0
+    vec /= np.linalg.norm(vec)
     pp_ = rotate_by_basis(pp, basis0[0], basis0[1])
     for num, i in enumerate(pp_):
         if np.linalg.norm(i - vec) <= let_accurance:
@@ -302,3 +309,5 @@ if __name__ == '__main__':
                 if not ((i)==find_section(np.zeros(3), rotate_by_basis(pp[i], j[0], j[1])), [j[0],j[1]]):
                     print(i, j[0], j[1])
 ############################################################################
+# print(np.linalg.norm(np.array([-0.46323886, -0.06500629, -0.88384611])))
+# print(find_section_and_rotate(np.array([-0.46323886, -0.06500629, -0.88384611]), np.zeros(3)))
