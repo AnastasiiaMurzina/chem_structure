@@ -249,13 +249,13 @@ def show_named_points(named_points):
         ax.text(i[0][0], i[0][1], i[0][2], str(key))
     plt.show()
 
-# def show_named_points(named_points):
-#     fig = plt.figure()
-#     ax = fig.add_subplot(111, projection='3d')
-#     for key, i in named_points.items():
-#         ax.scatter(i[0], i[1], i[2])
-#         ax.text(i[0], i[1], i[2], str(key))
-#     plt.show()
+def show_named_points1(named_points):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for key, i in named_points.items():
+        ax.scatter(i[0], i[1], i[2])
+        ax.text(i[0], i[1], i[2], str(key))
+    plt.show()
 
 #########################angles###########################
 def show_points_by_angles(center, angles, labels=False):

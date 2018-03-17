@@ -1,5 +1,6 @@
 from penta_with_rotate import get_penta_points, find_section, find_section_and_rotate,\
-    show_points, rotate_by_basis, show_named_points, get_reversed_section_and_basis
+    show_points, rotate_by_basis, show_named_points, get_reversed_section_and_basis, \
+    show_named_points1
 from one_way_chain import dimensional_corrected_structure
 
 import numpy as np
@@ -78,9 +79,9 @@ def coordinates_to_notation(info_from_file, valid_length = eps_length):
         basis = np.zeros(2)
         for i in connected:
             if key == 1:
-                sections.append((find_section(cur_p, positions[i]), 0, 0))
+                # sections.append((find_section(cur_p, positions[i]), 0, 0))
+                sections.append((find_section_and_rotate(cur_p, positions[i]), 0, 0))
             else:
-                # print(cur_p, positions[i])
                 s, b0, b1 = find_section_and_rotate(cur_p, positions[i])[::]
                 basis = np.array([b0, b1])
                 sections.append(find_section_and_rotate(cur_p, positions[i]))
@@ -94,12 +95,53 @@ def coordinates_to_notation(info_from_file, valid_length = eps_length):
         for num, i in enumerate(notation[1][0]):
             if i[1] == None:
                 upd.append([i[0], get_reversed_section_and_basis(notation[i[0]][0][0][1], notation[i[0]][1])])
-        bss = []
-        for i in upd:
-            bss.append(np.array([i[1][1], i[1][2]]))
-        notation.update({1: [[[i[0], i[1][0]] for i in upd], bss]})
+        # bss = []
+        # for i in upd:
+        #     bss.append(np.array([i[1][1], i[1][2]]))
+        notation.update({1: [[[i[0], i[1]] for i in upd], np.zeros(2)]})
 ##################################################
     return notation, names
+
+def dimnsional_structure_from_efa_notation(notation):
+    '''
+    :param notation: Notation with first atom with unique basis for every bond
+    :return: xyz-info
+    '''
+    dim_structure = {1: [np.array([0, 0, 0]), np.array([0, 0])]}
+    bonds_l, name = notation
+    p = bonds_l[1]
+    bonds_copy = copy.deepcopy(bonds_l)
+    p.insert(0, 1)  # p[0] - current atom, p[1] - bonds, p[2] - basis of p[0] atom
+    p = [p]
+    while len(p) != 0:
+        cur_key, bonds, basis = p.pop(0)
+        # print(cur_key, bonds, basis)
+        for i in bonds:  # build bonds for cur_key atom
+            if i[0] in dim_structure:  # if we already have position: we'll check
+                if isinstance(bonds_l[i[0]][1][0], (float, int)):
+                # print(bonds_l[i[0]][1][0])
+                # if len(bonds_l[i[0]][1]) == 2:
+                    section, b0, b1 = find_section_and_rotate(bonds_l[cur_key][0], bonds_l[i[0]][0])
+                    ix = [j for j in bonds_l[cur_key][0] if j[0] == i[0]][0]
+                    if (ix[1], bonds_l[cur_key][1][0], bonds_l[cur_key][1][1]) != (section, b0, b1):
+                        print('Invalid structure, cause {0} is not {1} for atom {2}'.format(str(ix[1]),
+                                                                                            str(section), str(i[0])))
+                        return
+            else:  # if it's new bond
+                if isinstance(i[1], (float, int)):
+                    coord = rotate_by_basis(pp[i[1]], dim_structure[cur_key][1][0], dim_structure[cur_key][1][1]) + \
+                        dim_structure[cur_key][0]
+                    section, angle0, angle1 = find_section_and_rotate(dim_structure[cur_key][0], coord)
+                    dim_structure.update({i[0]: [coord, [angle0, angle1]]})
+                else:
+                    coord = rotate_by_basis(pp[i[1][0]], i[1][1], i[1][2]) + \
+                            dim_structure[cur_key][0]
+                    section, angle0, angle1 = find_section_and_rotate(dim_structure[cur_key][0], coord)
+                    dim_structure.update({i[0]: [coord, [angle0, angle1]]})
+                poper = bonds_copy.pop(i[0])
+                poper.insert(0, i[0])
+                p.append(poper)
+    return dim_structure, name
 
 ##############################################################################################
 
@@ -175,15 +217,25 @@ def show_dim_chain(dim_struct, annotate=False, dict=None):
     #         ax.text(item[0] + 0.05, item[1] + 0.05, item[2] + 0.05, dictionary[key])
     plt.show()
 
-if __name__ == '__main__':
-    struct = chain2()[0]
-    # positions, bonds = dimensional_structure(struct)
-    dim_st = dimensional_structure(struct)[0]
-    # print(dim_st[0])
-    names = chain2()[1]
-    write_xyz_file('input_chain2.txt', names, dim_st)
-    print(coordinates_to_notation(read_xyz_file('input_chain2.txt')))
 
-    # bonds_shower(positions, bonds)
-    # show_with_bonds(chain2()[0], positions)
-    # write_xyz_file('input.txt', chain2()[1], dimensional_corrected_structure(struct)[0])
+
+def show_named_points_not_wbas(d3):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for key, item in d3.items():
+        ax.scatter(item[0][0], item[0][1], item[0][2])
+    plt.show()
+
+if __name__ == '__main__':
+    # struct = chain2()[0]
+    # positions, bonds = dimensional_structure(struct)
+    # dim_st = dimensional_structure(struct)[0]
+    # print(dim_st[0])
+    # names = chain2()[1]
+
+    notation = coordinates_to_notation(read_xyz_file('pyridine.xyz'), valid_length=0.7)
+    # show_extra_first_atom_notation(notation)
+    # print(notation)
+    d3, _ = dimnsional_structure_from_efa_notation(notation)
+    print(d3)
+    show_named_points_not_wbas(d3)
