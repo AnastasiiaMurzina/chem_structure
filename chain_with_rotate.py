@@ -64,7 +64,19 @@ def dimensional_structure(chain_v):
     return dim_structure, chain_v
 
 
-def coordinates_to_notation(info_from_file, valid_length = eps_length):
+def saver_l(info_from_file, notation):
+    positions = info_from_file[0]
+    lengths = {}
+    for key, item in notation.items():
+        ls = []
+        for i in item[0]:
+            ck = i[0] if isinstance(i[0], (float, int)) else i[0][0]
+            # ls.append([ck, np.linalg.norm(positions[key]-positions[int(ck)])])
+            lengths.update({tuple([key, ck]): np.linalg.norm(positions[key]-positions[int(ck)])})
+    return lengths
+
+
+def coordinates_to_notation(info_from_file, valid_length = eps_length, save_length=False):
     '''
     :param info_from_file: read_from_file tuple
     :return: chain in dictionary notation (see above)
@@ -99,10 +111,12 @@ def coordinates_to_notation(info_from_file, valid_length = eps_length):
         # for i in upd:
         #     bss.append(np.array([i[1][1], i[1][2]]))
         notation.update({1: [[[i[0], i[1]] for i in upd], np.zeros(2)]})
+    if save_length: return notation, names, saver_l(info_from_file, notation)
 ##################################################
     return notation, names
 
-def dimnsional_structure_from_efa_notation(notation):
+
+def dimensional_structure_from_efa_notation(notation):
     '''
     :param notation: Notation with first atom with unique basis for every bond
     :return: xyz-info
@@ -119,8 +133,6 @@ def dimnsional_structure_from_efa_notation(notation):
         for i in bonds:  # build bonds for cur_key atom
             if i[0] in dim_structure:  # if we already have position: we'll check
                 if isinstance(bonds_l[i[0]][1][0], (float, int)):
-                # print(bonds_l[i[0]][1][0])
-                # if len(bonds_l[i[0]][1]) == 2:
                     section, b0, b1 = find_section_and_rotate(bonds_l[cur_key][0], bonds_l[i[0]][0])
                     ix = [j for j in bonds_l[cur_key][0] if j[0] == i[0]][0]
                     if (ix[1], bonds_l[cur_key][1][0], bonds_l[cur_key][1][1]) != (section, b0, b1):
@@ -141,6 +153,49 @@ def dimnsional_structure_from_efa_notation(notation):
                 poper = bonds_copy.pop(i[0])
                 poper.insert(0, i[0])
                 p.append(poper)
+    return dim_structure, name
+
+
+def dimensional_from_lefa_notation(notation):
+    '''
+    :param notation: Notation with first atom with unique basis for every bond
+    with length
+    :return: xyz-info
+    '''
+    dim_structure = {1: [np.array([0, 0, 0]), np.array([0, 0])]}
+    bonds_l, name, lengths = notation
+    p = bonds_l[1]
+    bonds_copy = copy.deepcopy(bonds_l)
+    p.insert(0, 1)  # p[0] - current atom, p[1] - bonds, p[2] - basis of p[0] atom
+    p = [p]
+    while len(p) != 0:
+        cur_key, bonds, basis = p.pop(0)
+        # print(cur_key, bonds, basis)
+        for i in bonds:  # build bonds for cur_key atom
+            if i[0] in dim_structure:  # if we already have position: we'll check
+                if isinstance(bonds_l[i[0]][1][0], (float, int)):
+                    section, b0, b1 = find_section_and_rotate(bonds_l[cur_key][0], bonds_l[i[0]][0])
+                    ix = [j for j in bonds_l[cur_key][0] if j[0] == i[0]][0]
+                    if (ix[1], bonds_l[cur_key][1][0], bonds_l[cur_key][1][1]) != (section, b0, b1):
+                        print('Invalid structure, cause {0} is not {1} for atom {2}'.format(str(ix[1]),
+                                                                                            str(section), str(i[0])))
+                        return
+            else:  # if it's new bond
+                # print('l', lengths[(cur_key, i[0])])
+                if isinstance(i[1], (float, int)):
+                    coord = rotate_by_basis(pp[i[1]], dim_structure[cur_key][1][0], dim_structure[cur_key][1][1])*lengths[(cur_key, i[0])] + \
+                        dim_structure[cur_key][0]
+                    section, angle0, angle1 = find_section_and_rotate(dim_structure[cur_key][0], coord)
+                    dim_structure.update({i[0]: [coord, [angle0, angle1]]})
+                else:
+                    coord = rotate_by_basis(pp[i[1][0]], i[1][1], i[1][2])*lengths[(cur_key, i[0])] + \
+                            dim_structure[cur_key][0]
+                    section, angle0, angle1 = find_section_and_rotate(dim_structure[cur_key][0], coord)
+                    dim_structure.update({i[0]: [coord, [angle0, angle1]]})
+                poper = bonds_copy.pop(i[0])
+                poper.insert(0, i[0])
+                p.append(poper)
+    # print(type(dim_structure), dim_structure)
     return dim_structure, name
 
 ##############################################################################################
@@ -233,9 +288,14 @@ if __name__ == '__main__':
     # print(dim_st[0])
     # names = chain2()[1]
 
-    notation = coordinates_to_notation(read_xyz_file('pyridine.xyz'), valid_length=0.7)
+    notation = coordinates_to_notation(read_xyz_file('pyridine.xyz'), valid_length=0.7, save_length=False)
+    ln = coordinates_to_notation(read_xyz_file('pyridine.xyz'), valid_length=0.7, save_length=True)
+    print(ln)
+    # print(dimensional_from_lefa_notation(ln))
+    d31, _ = dimensional_from_lefa_notation(ln)
+
+    show_named_points_not_wbas(d31)
     # show_extra_first_atom_notation(notation)
-    # print(notation)
-    d3, _ = dimnsional_structure_from_efa_notation(notation)
-    print(d3)
-    show_named_points_not_wbas(d3)
+    d3, _ = dimensional_structure_from_efa_notation(notation)
+    # print(d3)
+    # show_named_points_not_wbas(d3)
