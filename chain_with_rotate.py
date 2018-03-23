@@ -1,6 +1,6 @@
 from penta_with_rotate import get_penta_points, find_section, find_section_and_rotate,\
     show_points, rotate_by_basis, show_named_points, get_reversed_section_and_basis, \
-    show_named_points1
+    show_named_points1, find_basis, find_basis_mave
 from one_way_chain import dimensional_corrected_structure
 
 import numpy as np
@@ -68,15 +68,13 @@ def saver_l(info_from_file, notation):
     positions = info_from_file[0]
     lengths = {}
     for key, item in notation.items():
-        ls = []
         for i in item[0]:
             ck = i[0] if isinstance(i[0], (float, int)) else i[0][0]
-            # ls.append([ck, np.linalg.norm(positions[key]-positions[int(ck)])])
             lengths.update({tuple([key, ck]): np.linalg.norm(positions[key]-positions[int(ck)])})
     return lengths
 
 
-def coordinates_to_notation(info_from_file, valid_length = eps_length, save_length=False):
+def coordinates_to_notation(info_from_file, valid_length=eps_length, save_length=False):
     '''
     :param info_from_file: read_from_file tuple
     :return: chain in dictionary notation (see above)
@@ -86,7 +84,7 @@ def coordinates_to_notation(info_from_file, valid_length = eps_length, save_leng
     notation = {}
     for key, item in positions.items():
         cur_p = positions_copy.pop(key)
-        connected = [k for k, ite in positions.items() if abs(np.linalg.norm(ite-cur_p)-1)<valid_length]
+        connected = [k for k, ite in positions.items() if abs(np.linalg.norm(ite - cur_p) - 1) < valid_length]
         sections = []
         basis = np.zeros(2)
         for i in connected:
@@ -181,7 +179,6 @@ def dimensional_from_lefa_notation(notation):
                                                                                             str(section), str(i[0])))
                         return
             else:  # if it's new bond
-                # print('l', lengths[(cur_key, i[0])])
                 if isinstance(i[1], (float, int)):
                     coord = rotate_by_basis(pp[i[1]], dim_structure[cur_key][1][0], dim_structure[cur_key][1][1])*lengths[(cur_key, i[0])] + \
                         dim_structure[cur_key][0]
@@ -195,8 +192,76 @@ def dimensional_from_lefa_notation(notation):
                 poper = bonds_copy.pop(i[0])
                 poper.insert(0, i[0])
                 p.append(poper)
-    # print(type(dim_structure), dim_structure)
     return dim_structure, name
+
+
+def dimensional_length_unique_basis(notation):
+    '''
+    :param notation: Notation with first atom with unique basis for every bond
+    with length
+    :return: xyz-info
+    '''
+    dim_structure = {1: np.array([0, 0, 0])}#, np.array([0, 0])]}
+    bonds_l, name, lengths = notation
+    p = bonds_l[1]
+    bonds_copy = copy.deepcopy(bonds_l)
+    p.insert(0, 1)  # p[0] - current atom, p[1] - bonds, p[2] - basis of p[0] atom
+    p = [p]
+    while len(p) != 0:
+        cur_key, bonds, basis = p.pop(0)
+        for i in bonds:  # build bonds for cur_key atom
+            if not (i[0] in dim_structure):  # if we don't have position:
+                coord = rotate_by_basis(pp[i[1]], basis[0], basis[1])*lengths[(cur_key, i[0])]+dim_structure[cur_key]
+                dim_structure.update({i[0]: coord})
+                poper = bonds_copy.pop(i[0])
+                poper.insert(0, i[0])
+                p.append(poper)
+    return dim_structure, name
+
+
+def coordinates_to_mm_basis_notation(info_from_file, valid_length=eps_length, save_length=False):
+    '''
+    :param info_from_file: read_from_file tuple
+    :return: chain in dictionary notation (see above)
+    '''
+    positions, names = info_from_file
+    positions_copy = copy.deepcopy(positions)
+    notation = {}
+    for key, item in positions.items():
+        cur_p = positions_copy.pop(key)
+        connected = [k for k, ite in positions.items() if abs(np.linalg.norm(ite - cur_p) - 1) < valid_length]
+        sections = []
+        basis = find_basis(cur_p, [positions[i] for i in connected])
+        for i in connected:
+            sections.append([i, find_section(cur_p, positions[i], basis0=basis, all_posibility=True)])
+        notation.update({key: [sections, basis]})
+    if save_length:
+        return notation, names, saver_l(info_from_file, notation)
+    return notation, names
+
+
+def coordinates_to_min_mean_basis_notation(info_from_file, valid_length=eps_length, save_length=False):
+    '''
+    Unique basis for one node by minimum of average distances
+    :param info_from_file: read_from_file tuple
+    :return: chain in dictionary notation (see above)
+    '''
+    positions, names = info_from_file
+    positions_copy = copy.deepcopy(positions)
+    notation = {}
+    for key, item in positions.items():
+        cur_p = positions_copy.pop(key)
+        connected = [k for k, ite in positions.items() if abs(np.linalg.norm(ite - cur_p) - 1) < valid_length]
+        sections = []
+        basis = find_basis_mave(cur_p, connected)
+        for i in connected:
+            sections.append([i, find_section(cur_p, positions[i], basis0=basis, all_posibility=True)])
+        notation.update({key: [sections, basis]})
+    if save_length:
+        return notation, names, saver_l(info_from_file, notation)
+    return notation, names
+
+
 
 ##############################################################################################
 
@@ -209,9 +274,9 @@ def write_xyz_file(file_name, names, positions):
     :return: None, void write function
     '''
     with open(file_name, 'w') as f1:
-        f1.write(str(len(names))+'\n')
+        f1.write(str(len(names))+'\n\n')
         for key, item in names.items():
-            f1.write("{0}\t{1}\t{2}\t{3}\n".format(item, str(positions[key][0][0]),str(positions[key][0][1]),str(positions[key][0][2])))
+            f1.write("{0}\t{1}\t{2}\t{3}\n".format(item, str(positions[key][0]),str(positions[key][1]),str(positions[key][2])))
 
 ############################ Show ######################################
 def show_with_bonds(bounds, dpoints, annotate=False, dictionary=None):
@@ -244,17 +309,20 @@ def bonds_shower(positions, bonds):
                     [positions[key][0][2], positions[i[0]][0][2]])
     fig.show()
 
+
 def read_xyz_file(file):
     with open(file, 'r') as file:
         n = int(file.readline())
         names = {}
         positions = {}
+        file.readline()
         for i in range(n):
             line = file.readline().split()
             names.update({i+1: line[0]})
             x, y, z = [float(j) for j in line[1::]]
             positions.update({i+1: np.array([x,y,z])})
     return positions, names
+
 
 def show_dim_chain(dim_struct, annotate=False, dict=None):
     fig = plt.figure()
@@ -273,7 +341,6 @@ def show_dim_chain(dim_struct, annotate=False, dict=None):
     plt.show()
 
 
-
 def show_named_points_not_wbas(d3):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -282,20 +349,11 @@ def show_named_points_not_wbas(d3):
     plt.show()
 
 if __name__ == '__main__':
-    # struct = chain2()[0]
-    # positions, bonds = dimensional_structure(struct)
-    # dim_st = dimensional_structure(struct)[0]
-    # print(dim_st[0])
-    # names = chain2()[1]
 
-    notation = coordinates_to_notation(read_xyz_file('pyridine.xyz'), valid_length=0.7, save_length=False)
-    ln = coordinates_to_notation(read_xyz_file('pyridine.xyz'), valid_length=0.7, save_length=True)
+    # notation = coordinates_to_notation(read_xyz_file('pyridine.xyz'), valid_length=0.7, save_length=False)
+    ln = coordinates_to_mm_basis_notation(read_xyz_file('Caffein.xyz'), valid_length=0.7, save_length=True)
     print(ln)
-    # print(dimensional_from_lefa_notation(ln))
-    d31, _ = dimensional_from_lefa_notation(ln)
+    d31, nms = dimensional_length_unique_basis(ln)
+    # show_named_points1(read_xyz_file('Caffein.xyz')[0])
 
-    show_named_points_not_wbas(d31)
-    # show_extra_first_atom_notation(notation)
-    d3, _ = dimensional_structure_from_efa_notation(notation)
-    # print(d3)
-    # show_named_points_not_wbas(d3)
+    write_xyz_file('My_caffein.xyz', nms, d31)

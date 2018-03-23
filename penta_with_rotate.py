@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from itertools import product
 from copy import deepcopy
+from mpl_toolkits.mplot3d import Axes3D
+
 '''
 Describe division: first parameter of bond is section [0..11]
 second parameter is rotate by two numbers [0..n_y-1, 0..n_z-1]
@@ -215,7 +217,7 @@ def find_section_and_rotate(p0, p1):
     # return ps[1], None
 
 
-def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot):
+def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibility=False):
     '''
     :param p0: this point has already basis
     :param p1: not important basis of p1
@@ -223,8 +225,10 @@ def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot):
     :return: section of p0 atom in which there's p1
     '''
     vec = p1 - p0
-    vec /= np.linalg.norm(vec)
+    vec = np.array([i/np.linalg.norm(vec) for i in vec])
     pp_ = rotate_by_basis(pp, basis0[0], basis0[1])
+    if all_posibility:
+        return min([[np.linalg.norm(ppx - vec), ix] for ix, ppx in enumerate(pp_)])[1]
     for num, i in enumerate(pp_):
         if np.linalg.norm(i - vec) <= let_accurance:
             return num
@@ -232,6 +236,7 @@ def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot):
 
 def get_reversed_section_and_basis(s, b0):
     return find_section_and_rotate(np.zeros(3), rotate_by_basis(pp[s], b0[0], b0[1]))
+
 ###################################################
 def show_points(points):
     fig = plt.figure()
@@ -285,29 +290,82 @@ def get_penta_angles():
     return angles
 
 
+def find_basis(point, connected):
+    '''
+    :param point: point for search basis
+    :param connected: atoms which have bonds with point
+    :return: basis for point (y, z) by min of max different between point and center of section
+    '''
+    diffs = []
+    for j in sorted(product(range(n_y), range(n_z)), key=lambda x: sum(x)):
+        diff = []
+        for i in connected:
+            v = i - point
+            v /= np.linalg.norm(v)
+            diff.append(min([np.linalg.norm(v - ppx) for ppx in rotate_by_basis(pp, j[0], j[1])]))
+        diffs.append([max(diff), j])
+    return min(diffs)[1]
+
+
+def find_basis_mave(point, connected):
+    '''
+    :param point: point for search basis
+    :param connected: atoms which have bonds with point
+    :return: basis for point (y, z) by min of max different between point and center of section
+    '''
+    diffs = []
+    for j in sorted(product(range(n_y), range(n_z)), key=lambda x: sum(x)):
+        diff = []
+        for i in connected:
+            v = i - point
+            v /= np.linalg.norm(v)
+            diff.append(np.mean([np.linalg.norm(v - ppx) for ppx in rotate_by_basis(pp, j[0], j[1])]))
+        diffs.append([max(diff), j])
+    return min(diffs)[1]
+
+
+# def find_basis_mave(point, connected):
+#     '''
+#     :param point: point for search basis
+#     :param connected: atoms which have bonds with point
+#     :return: basis for point (y, z) by min of max different between point and center of section
+#     '''
+#     diffs = []
+#     pp0 = pp
+#     for j in sorted(product(range(n_y), range(n_z)), key=lambda x: sum(x)):
+#         diff = []
+#         for i in connected:
+#             diff.append(min([np.linalg.norm(i - ppx) for ppx in [point + kk for kk in rotate_by_basis(pp0, j[0], j[1])]]))
+#         diffs.append([max(diff), j])
+#     return min(diffs)[1]
+
+
 ########################################################
 
 if __name__ == '__main__':
 ####################find_section_and_rotate tests#####################################
-    for i in range(12): # p0 - rotated point, p1 - center
-        for j in sorted(product((0, 1, 2, 3), repeat=2), key=lambda x: sum(x)):
-            if (i not in [0, 6]) or (i in [0, 6] and j[1] == 0):
-                if find_section_and_rotate(rotate_by_basis(pp[i], j[0], j[1]), np.zeros(3))!=(i,j[0],j[1]):
-                    print(i, j[0], j[1], find_section_and_rotate(rotate_by_basis(pp[i], j[0], j[1]), np.zeros(3)))
-    sections = [] # check unique
-    for i in range(12):
-        for j in sorted(product((0, 1, 2, 3), repeat=2), key=lambda x: sum(x)):
-            if (i not in [0, 6]) or (i in [0, 6] and j[1] == 0):
-                section = get_reversed_section_and_basis(i, j)
-                if section in sections:
-                    print(sections)
-                sections.append(section)
+    # for i in range(12): # p0 - rotated point, p1 - center
+    #     for j in sorted(product((0, 1, 2, 3), repeat=2), key=lambda x: sum(x)):
+    #         if (i not in [0, 6]) or (i in [0, 6] and j[1] == 0):
+    #             if find_section_and_rotate(rotate_by_basis(pp[i], j[0], j[1]), np.zeros(3))!=(i,j[0],j[1]):
+    #                 print(i, j[0], j[1], find_section_and_rotate(rotate_by_basis(pp[i], j[0], j[1]), np.zeros(3)))
+    # sections = [] # check unique
+    # for i in range(12):
+    #     for j in sorted(product((0, 1, 2, 3), repeat=2), key=lambda x: sum(x)):
+    #         if (i not in [0, 6]) or (i in [0, 6] and j[1] == 0):
+    #             section = get_reversed_section_and_basis(i, j)
+    #             if section in sections:
+    #                 print(sections)
+    #             sections.append(section)
 ##########################find_only_section_test######################################
-    for i in range(12):
-        for j in sorted(product((0, 1, 2, 3), repeat=2), key=lambda x: sum(x)):
-            if i in [0, 6] and j[1] == 0:
-                if not ((i)==find_section(np.zeros(3), rotate_by_basis(pp[i], j[0], j[1])), [j[0],j[1]]):
-                    print(i, j[0], j[1])
+    # for i in range(12):
+    #     for j in sorted(product((0, 1, 2, 3), repeat=2), key=lambda x: sum(x)):
+    #         if i in [0, 6] and j[1] == 0:
+    #             if not ((i)==find_section(np.zeros(3), rotate_by_basis(pp[i], j[0], j[1])), [j[0],j[1]]):
+    #                 print(i, j[0], j[1])
 ############################################################################
-# print(np.linalg.norm(np.array([-0.46323886, -0.06500629, -0.88384611])))
-# print(find_section_and_rotate(np.array([-0.46323886, -0.06500629, -0.88384611]), np.zeros(3)))
+    # print(np.linalg.norm(pp[4] - rotate_by_basis(pp[4], 3, 0)))
+    # print(min([np.linalg.norm(pp[4]-rotate_by_basis(pp[4],1,3)) for i in range(12)]))
+    # bs = find_basis(np.array([0, 0, 0]), rotate_by_basis(pp[4], 1, 2))
+    # print(bs)
+    pass
