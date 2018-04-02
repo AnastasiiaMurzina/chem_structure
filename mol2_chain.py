@@ -1,16 +1,14 @@
 from penta_with_rotate import get_penta_points, find_section, find_section_and_rotate,\
     show_points, rotate_by_basis, show_named_points, get_reversed_section_and_basis, \
     show_named_points1, find_basis, find_basis_mave
-from mol2_worker import xyz_names
+from mol2_worker import xyz_names, xyz_names_bonds
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import copy
-from string import digits
 
 # fig = plt.figure()
 # ax = fig.add_subplot(111, projection='3d')
-count_bonds = {'H': 1, 'C': 4, 'O': 2}
 eps_length = 0.001
 pp = get_penta_points()
 
@@ -46,13 +44,13 @@ def dimensional_structure(chain_v):
     return dim_structure, chain_v
 
 
-def saver_l(info_from_file, notation):
+def saver_l(info_from_file, notation, bonds_attr):
     positions = info_from_file[0]
     lengths = {}
     for key, item in notation.items():
         for i in item[0]:
             ck = i[0] if isinstance(i[0], (float, int)) else i[0][0]
-            lengths.update({tuple([key, ck]): np.linalg.norm(positions[key]-positions[int(ck)])})
+            lengths.update({(key, ck): [np.linalg.norm(positions[key]-positions[int(ck)]), bonds_attr[(key, ck)] if bonds_attr.get((key, ck)) else bonds_attr[(ck, key)]]})
     return lengths
 
 
@@ -193,7 +191,7 @@ def dimensional_length_unique_basis(notation):
         cur_key, bonds, basis = p.pop(0)
         for i in bonds:  # build bonds for cur_key atom
             if not (i[0] in dim_structure):  # if we don't have position:
-                coord = rotate_by_basis(pp[i[1]], basis[0], basis[1])*lengths[(cur_key, i[0])]+dim_structure[cur_key]
+                coord = rotate_by_basis(pp[i[1]], basis[0], basis[1])*lengths[(cur_key, i[0])][0]+dim_structure[cur_key]
                 dim_structure.update({i[0]: coord})
                 poper = bonds_copy.pop(i[0])
                 poper.insert(0, i[0])
@@ -201,12 +199,18 @@ def dimensional_length_unique_basis(notation):
     return dim_structure, name
 
 
+def get_bonds_attr(bonds):
+    attr = {}
+    for i in bonds:
+        attr.update({(i[0], i[1]): i[2]})
+    return attr
+
 def coordinates_to_mm_basis_notation(info_from_file, valid_length=eps_length, save_length=False):
     '''
     :param info_from_file: read_from_file tuple
     :return: chain in dictionary notation (see above)
     '''
-    positions, names = info_from_file
+    positions, names, bonds = info_from_file
     positions_copy = copy.deepcopy(positions)
     notation = {}
     for key, item in positions.items():
@@ -218,7 +222,7 @@ def coordinates_to_mm_basis_notation(info_from_file, valid_length=eps_length, sa
             sections.append([i, find_section(cur_p, positions[i], basis0=basis, all_posibility=True)])
         notation.update({key: [sections, basis]})
     if save_length:
-        return notation, names, saver_l(info_from_file, notation)
+        return notation, names, saver_l(info_from_file, notation, get_bonds_attr(bonds))
     return notation, names
 
 
@@ -294,7 +298,7 @@ def read_xyz_file(file):
     return positions, names
 
 
-def write_mol_file(file_name, names, positions, bonds=[]):
+def write_mol_file(file_name, names, positions, bonds=[], attrs = {}):
     '''
     :param file_name:
     :param names: chemical elements names
@@ -312,100 +316,17 @@ def write_mol_file(file_name, names, positions, bonds=[]):
             f1.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\n".format(num+1, item, str(positions[key][0]),
                                                    str(positions[key][1]),
                                                    str(positions[key][2]), item,
+                                                                  # filter(lambda x: x.isalpha(), item),
                                                                        '1', 'LIG1', '0'))
         f1.write('@<TRIPOS>BOND\n')
         if bonds != []:
             for num, i in enumerate(bonds):
+                # print(i, 't',attrs.get(tuple([i[0], i[1]])), attrs.get(tuple([i[1], i[0]])))
                 f1.write("{0}\t{1}\t{2}\t{3}\n".format(str(num+1), str(i[0]),
-                                                       str(i[1]), str(i[2]) if len(i) > 2 else '1'))
-#######################Aromatic#############################
-def dfs(graph, start, end):
-    fringe = [(start, [])]
-    while fringe:
-        state, path = fringe.pop()
-        if path and state == end:
-            yield path
-            continue
-        for next_state in graph[state]:
-            if next_state in path:
-                continue
-            fringe.append((next_state, path+[next_state]))
-
-
-def get_cycles(graph):
-    return [[node] + path for node in graph for path in dfs(graph, node, node)]
+                                                       str(i[1]), attrs[(i[0], i[1])][1] if attrs.get((i[0], i[1])) else attrs[(i[1], i[0])][1]))#str(i[2]) if len(i) > 2 else '1'))
 
 
 
-def preparation_to_dfs(graph):
-    ix = 0
-    gr = {}
-    print(graph[len(graph)-1][0])
-    for i in range(graph[len(graph)-1][0]):
-        while ix<len(graph) and graph[ix][0] == i + 1:
-           if gr.get(graph[ix][0]):
-               gr.get(graph[ix][0]).append(graph[ix][1])
-           else:
-               gr.update({graph[ix][0]: [graph[ix][1]]})
-           ix += 1
-    return gr
-
-
-############################ Show ######################################
-def show_with_bonds(bounds, dpoints, annotate=False, dictionary=None):
-    '''
-    :param bounds: list of bounds
-    :param dpoints: dictionary with coordinates
-    :param annotate:
-    :param dictionary:
-    :return: 3d picture
-    '''
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    for i in bounds:
-        ax.plot([dpoints[i[0]][0], dpoints[i[1]][0]],
-                [dpoints[i[0]][1], dpoints[i[1]][1]],
-                [dpoints[i[0]][2], dpoints[i[1]][2]])
-    if annotate:
-        for key, item in dpoints.items():
-            ax.text(item[0]+0.05, item[1]+0.05, item[2]+0.05, dictionary[key])
-    plt.show()
-
-
-def bonds_shower(positions, bonds):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    for key, item in bonds.items():
-        for i in item[0]:
-            ax.plot([positions[key][0][0], positions[i[0]][0][0]],
-                    [positions[key][0][1], positions[i[0]][0][1]],
-                    [positions[key][0][2], positions[i[0]][0][2]])
-    fig.show()
-
-
-def show_dim_chain(dim_struct, annotate=False, dict=None):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    if annotate:
-        for key, item in dim_struct.items():
-            ax.scatter(item[0][0], item[0][1], item[0][2])
-            ax.text(item[0][0]+0.05, item[0][1]+0.05, item[0][2]+0.05, dict[key])
-    # for i in bonds:
-    #     ax.plot([dpoints[i[0]][0], dpoints[i[1]][0]],
-    #             [dpoints[i[0]][1], dpoints[i[1]][1]],
-    #             [dpoints[i[0]][2], dpoints[i[1]][2]])
-    # if annotate:
-    #     for key, item in dpoints.items():
-    #         ax.text(item[0] + 0.05, item[1] + 0.05, item[2] + 0.05, dictionary[key])
-    plt.show()
-
-
-def show_named_points_not_wbas(d3):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    for key, item in d3.items():
-        ax.scatter(item[0][0], item[0][1], item[0][2])
-    plt.show()
 ##############################Mol2_preparations###########################################
 
 def to_one_way_bonds(two_way_bonds):
@@ -449,26 +370,14 @@ def to_two_ways_bond(one_way_bonds, with_attr=False):
 
 
 if __name__ == '__main__':
-    ################mol2_files##############
-
-    # ln = coordinates_to_mm_basis_notation(xyz_names('Caffein.xyz'), valid_length=0.7, save_length=True)
-    ln = coordinates_to_mm_basis_notation(read_xyz_file('Caffein.xyz'), valid_length=0.7, save_length=True)
+###########################################mol2_files##############
+    ln = coordinates_to_mm_basis_notation(xyz_names_bonds('water.mol2'), valid_length=0.4, save_length=True)
     # ln = coordinates_to_notation(xyz_names('benzene.mol2'), save_length=True)
-
-    # print(to_one_way_bonds(ln[0]))
+    print("coords_in_notation", ln)
+    # print(ln[2],'2')
+    print(to_one_way_bonds(ln[0]))
     print(ln)
     d31, nms = dimensional_length_unique_basis(ln)
 
-    one_way_bs = to_one_way_bonds(ln[0])
-    # print(get_cycles(preparation_to_dfs(ln[0])))
-    write_mol_file('My_caffein.mol2', nms, d31, bonds=to_one_way_bonds(ln[0]))
-###############xyz_examples############
-    # print(read_xyz_file("Aniline.xyz"))
-    # notation = coordinates_to_notation(read_xyz_file('pyridine.xyz'), valid_length=0.7, save_length=False)
-    # ln = coordinates_to_mm_basis_notation(read_xyz_file('Caffein.xyz'), valid_length=0.7, save_length=True)
-    # print(ln)
-    # d31, nms = dimensional_length_unique_basis(ln)
-    # show_named_points1(read_xyz_file('Caffein.xyz')[0])
-
-    # write_xyz_file('My_caffein.xyz', nms, d31)
-    # write_xyz_file('My_benzene.xyz', nms, d31)
+    print(to_one_way_bonds(ln[0]))
+    write_mol_file('My_water.mol2', nms, d31, bonds=to_one_way_bonds(ln[0]), attrs=ln[2])
