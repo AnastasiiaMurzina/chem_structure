@@ -50,7 +50,8 @@ def saver_l(info_from_file, notation, bonds_attr):
     for key, item in notation.items():
         for i in item[0]:
             ck = i[0] if isinstance(i[0], (float, int)) else i[0][0]
-            lengths.update({(key, ck): [np.linalg.norm(positions[key]-positions[int(ck)]), bonds_attr[(key, ck)] if bonds_attr.get((key, ck)) else bonds_attr[(ck, key)]]})
+            if bonds_attr.get((key, ck)) or bonds_attr.get(((ck, key))):
+                lengths.update({(key, ck): [np.linalg.norm(positions[key]-positions[int(ck)]), bonds_attr[(key, ck)] if bonds_attr.get((key, ck)) else bonds_attr[(ck, key)]]})
     return lengths
 
 
@@ -371,7 +372,7 @@ def to_two_ways_bond(one_way_bonds, with_attr=False):
 
 if __name__ == '__main__':
 ###########################################mol2_files##############
-    ln = coordinates_to_mm_basis_notation(xyz_names_bonds('water.mol2'), valid_length=0.4, save_length=True)
+    ln = coordinates_to_mm_basis_notation(xyz_names_bonds('Caffein.mol2'), valid_length=0.5, save_length=True)
     # ln = coordinates_to_notation(xyz_names('benzene.mol2'), save_length=True)
     print("coords_in_notation", ln)
     # print(ln[2],'2')
@@ -380,4 +381,4 @@ if __name__ == '__main__':
     d31, nms = dimensional_length_unique_basis(ln)
 
     print(to_one_way_bonds(ln[0]))
-    write_mol_file('My_water.mol2', nms, d31, bonds=to_one_way_bonds(ln[0]), attrs=ln[2])
+    write_mol_file('My_caffein.mol2', nms, d31, bonds=to_one_way_bonds(ln[0]), attrs=ln[2])

@@ -299,12 +299,13 @@ def find_basis(point, connected):
     diffs = []
     for j in sorted(product(range(n_y), range(n_z)), key=lambda x: sum(x)):
         diff = []
-        for i in connected:
-            v = i - point
-            v /= np.linalg.norm(v)
-            diff.append(min([np.linalg.norm(v - ppx) for ppx in rotate_by_basis(pp, j[0], j[1])]))
-        diffs.append([max(diff), j])
-    return min(diffs)[1]
+        if connected!=[]:
+            for i in connected:
+                v = i - point
+                v /= np.linalg.norm(v)
+                diff.append(min([np.linalg.norm(v - ppx) for ppx in rotate_by_basis(pp, j[0], j[1])]))
+            diffs.append([max(diff), j])
+    return min(diffs)[1] if diff!=[] else []
 
 
 def find_basis_mave(point, connected):
