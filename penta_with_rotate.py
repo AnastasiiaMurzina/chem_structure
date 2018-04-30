@@ -47,7 +47,7 @@ def get_up_surface_centers(point_from):
     :param point_from: the highest point of dodecahedron
     :return: points in the higher semispace of dodecahedron
     '''
-    initial_angle = 0
+    initial_angle = pi/5
     centers = [point_from]
     for i in range(5):
         centers.append(np.array([h * cos(initial_angle) * (1 - cos(angle)) + point_from[0],
@@ -299,13 +299,12 @@ def find_basis(point, connected):
     diffs = []
     for j in sorted(product(range(n_y), range(n_z)), key=lambda x: sum(x)):
         diff = []
-        if connected!=[]:
-            for i in connected:
-                v = i - point
-                v /= np.linalg.norm(v)
-                diff.append(min([np.linalg.norm(v - ppx) for ppx in rotate_by_basis(pp, j[0], j[1])]))
-            diffs.append([max(diff), j])
-    return min(diffs)[1] if diff!=[] else []
+        for i in connected:
+            v = i - point
+            v /= np.linalg.norm(v)
+            diff.append(min([np.linalg.norm(v - ppx) for ppx in rotate_by_basis(pp, j[0], j[1])]))
+        diffs.append([max(diff), j])
+    return min(diffs)[1]
 
 
 def find_basis_mave(point, connected):
@@ -369,4 +368,4 @@ if __name__ == '__main__':
     # print(min([np.linalg.norm(pp[4]-rotate_by_basis(pp[4],1,3)) for i in range(12)]))
     # bs = find_basis(np.array([0, 0, 0]), rotate_by_basis(pp[4], 1, 2))
     # print(bs)
-    pass
+    show_points(pp)
