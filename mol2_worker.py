@@ -24,8 +24,8 @@ class Atom():
         self.orientation = basis
 
 class Bond():
-    def __init__(self, c1, c2):
-        self.connected = {c1, c2}
+    def __init__(self, c1, c2, attr):
+        self.connected = {c1, c2, attr}
         
 def read_mol2(file_name):
     with open(file_name, 'r') as f1:
@@ -76,12 +76,30 @@ def xyz_names_bonds(file_name):
     return xyz, names, bonds
 
 
+def atoms_and_bonds(file_name, bonds_choice=False):
+    atoms = {}
+    bonds = {}
+    _, atomsxyz, bonds_attr = read_mol2(file_name)
+    atomsxyz = atomsxyz.split()[1::]
+    ago = check_mol2_line(file_name)
+    n = int(atomsxyz[-ago])
+    for i in range(n):
+        at = atomsxyz[ago*i:ago*(i+1):]
+        current_atom = Atom(at[1], at[5], at[6], at[7], float(at[8]))
+        current_atom.set_xyz(float(at[2]), float(at[3]), float(at[4]))
+        atoms.update({i+1: current_atom})
+    if bonds_choice:
+        bonds_attr = bonds_attr.split()[1::]
+        for i in range(len(bonds_attr)//4):
+            bond = bonds_attr[4*i: 4*i + 4:]
+            bonds.update({i+1: Bond(int(bond[1]), int(bond[2]), bond[3])})
+        return atoms, bonds
+    return atoms
+
 def positions_atoms_bonds(file_name):
     pass
 
 if __name__ == "__main__":
-    # print(xyz_names_bonds('benzene.mol2'))
-    # print(check_mol2_line('benzene.mol2'))
-    bonds = (xyz_names_bonds('Caffein.mol2')[-1])
-    print(bonds)
-    import pybel
+    # bonds = (xyz_names_bonds('Caffein.mol2')[-1])
+    # import pybel
+    atoms = atoms_and_bonds('Caffein.mol2')

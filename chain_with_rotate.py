@@ -1,7 +1,7 @@
 from penta_with_rotate import get_penta_points, find_section, find_section_and_rotate,\
     show_points, rotate_by_basis, show_named_points, get_reversed_section_and_basis, \
     show_named_points1, find_basis, find_basis_mave
-from mol2_worker import xyz_names
+from mol2_worker import xyz_names, atoms_and_bonds
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -59,6 +59,8 @@ def saver_l(info_from_file, notation):
 def coordinates_to_notation(info_from_file, valid_length=eps_length, save_length=False):
     '''
     :param info_from_file: read_from_file tuple
+    :param valid_length: accurancy of distance
+    :param save_length: True if save
     :return: chain in dictionary notation (see above)
     '''
     positions, names = info_from_file
@@ -290,18 +292,18 @@ def read_xyz_file(file):
             line = file.readline().split()
             names.update({i+1: line[0]})
             x, y, z = [float(j) for j in line[1::]]
-            positions.update({i+1: np.array([x,y,z])})
+            positions.update({i+1: np.array([x, y, z])})
     return positions, names
 
 
 def write_mol_file(file_name, names, positions, bonds=[]):
-    '''
+    """
     :param file_name:
     :param names: chemical elements names
     :param positions: xyz - coordinates
     :param bonds: one way bonds
     :return: None, void write function
-    '''
+    """
     with open(file_name, 'w') as f1:
         f1.write('@<TRIPOS>MOLECULE\n')
         f1.write('some info\n')
@@ -452,16 +454,16 @@ if __name__ == '__main__':
     ################mol2_files##############
 
     # ln = coordinates_to_mm_basis_notation(xyz_names('Caffein.xyz'), valid_length=0.7, save_length=True)
-    ln = coordinates_to_mm_basis_notation(read_xyz_file('Caffein.xyz'), valid_length=0.7, save_length=True)
-    # ln = coordinates_to_notation(xyz_names('benzene.mol2'), save_length=True)
+    # ln = coordinates_to_mm_basis_notation(read_xyz_file('Caffein.xyz'), valid_length=0.7, save_length=True)
+    # ln = coordinates_to_notation(xyz_names('Aniline.mol2'), save_length=True)
 
     # print(to_one_way_bonds(ln[0]))
-    print(ln)
-    d31, nms = dimensional_length_unique_basis(ln)
+    # print(ln)
+    # d31, nms = dimensional_length_unique_basis(ln)
 
-    one_way_bs = to_one_way_bonds(ln[0])
+    # one_way_bs = to_one_way_bonds(ln[0])
     # print(get_cycles(preparation_to_dfs(ln[0])))
-    write_mol_file('My_caffein.mol2', nms, d31, bonds=to_one_way_bonds(ln[0]))
+    # write_mol_file('My_aniline.mol2', nms, d31, bonds=to_one_way_bonds(ln[0]))
 ###############xyz_examples############
     # print(read_xyz_file("Aniline.xyz"))
     # notation = coordinates_to_notation(read_xyz_file('pyridine.xyz'), valid_length=0.7, save_length=False)
@@ -472,3 +474,4 @@ if __name__ == '__main__':
 
     # write_xyz_file('My_caffein.xyz', nms, d31)
     # write_xyz_file('My_benzene.xyz', nms, d31)
+    pass

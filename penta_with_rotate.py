@@ -129,6 +129,9 @@ def rotate_by_basis(point, y, z):
     return [i.dot(operator) for i in point]
 
 
+def rotate_ten_vars(point, var):
+    pass
+
 def point_to_angles(point):
     '''
     :param point: coordinates in Decart basis
@@ -173,6 +176,9 @@ def check_diff_rotate(n_y, n_z):
                         diff = min(diff, np.linalg.norm(i[k] - j[k]))
     return diff
 
+
+# def check_diff_var_rotate(var):
+#     return 0
 
 ###############Rotate const for search#########################
 step_rot = check_diff_rotate(n_y, n_z) * 0.5
