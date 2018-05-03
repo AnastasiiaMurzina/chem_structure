@@ -23,9 +23,22 @@ class Atom():
     def set_orientation(self, basis):
         self.orientation = basis
 
+    def position(self):
+        return np.array([self.x, self.y, self.z])
+
 class Bond():
-    def __init__(self, c1, c2, attr):
-        self.connected = {c1, c2, attr}
+    def __init__(self, c1, c2, attr, length=1., section=0):
+        self.connected = {c1, c2}
+        self.attr = attr
+        self.length = length
+        self.section = section
+
+    def set_length(self, length):
+        self.length = length
+
+
+    def set_section(self, section):
+        self.section = section
         
 def read_mol2(file_name):
     with open(file_name, 'r') as f1:
@@ -54,26 +67,29 @@ def xyz_names(file_name):
         xyz.update({int(positions[ns*i]): np.array([float(positions[ns*i+2]),
                                                  float(positions[ns * i + 3]),
                                                  float(positions[ns * i + 4])])})
-    return xyz, names
+    return xyz # , names
 
 
 def xyz_names_bonds(file_name):
     _, positions, bondsf = read_mol2(file_name)
     positions = positions.split()[1::]
     bondsf = bondsf.split()[1::]
-    names, xyz, bonds = {}, {}, {}
-    # print('b',bondsf)
+    atoms, xyz, bonds = {}, {}, {}
     ns = check_mol2_line(file_name)
     for i in range(len(positions) // ns):
-        names.update({int(positions[ns * i]): positions[ns * i + 1]})
-        xyz.update({int(positions[ns * i]): np.array([float(positions[ns * i + 2]),
-                                                 float(positions[ns * i + 3]),
-                                                 float(positions[ns * i + 4])])})
+        atom = Atom(positions[ns * i + 1], positions[ns*i + 2],
+                    positions[ns*i + 6], positions[ns*i + 7],
+                    float(positions[ns*i +8]))
+        atom.set_xyz(float(positions[ns * i + 2]), float(positions[ns * i + 3]), float(positions[ns * i + 4]))
+        atoms.update({i+1: atom})
+        # xyz.update({int(positions[ns * i]): np.array([float(positions[ns * i + 2]),
+        #                                          float(positions[ns * i + 3]),
+        #                                          float(positions[ns * i + 4])])})
     bonds = []
     for i in range(len(bondsf) // 4):
         b1, b2, attr = bondsf[4 * i + 1:4 * i + 4:]
         bonds.append([int(b1), int(b2), attr])
-    return xyz, names, bonds
+    return bonds, atoms
 
 
 def atoms_and_bonds(file_name, bonds_choice=False):
