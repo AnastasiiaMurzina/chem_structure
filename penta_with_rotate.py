@@ -235,9 +235,11 @@ def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibil
     pp_ = rotate_by_basis(pp, basis0[0], basis0[1])
     if all_posibility:
         return min([[np.linalg.norm(ppx - vec), ix] for ix, ppx in enumerate(pp_)])[1]
-    for num, i in enumerate(pp_):
-        if np.linalg.norm(i - vec) <= let_accurance:
-            return num
+    while True:
+        for num, i in enumerate(pp_):
+            if np.linalg.norm(i - vec) <= let_accurance:
+                return num
+        let_accurance *= 1.1
 
 
 def get_reversed_section_and_basis(s, b0):
