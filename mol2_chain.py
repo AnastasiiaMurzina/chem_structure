@@ -21,6 +21,18 @@ def prepare_bonds(bonds):
     return bonds
 
 
+def bonds_of_paired(bonds):
+    '''
+    :param bonds: in format {1: [[[2,1]], (2,1)], ...}
+    :return: bonds in format {(c_1, c_2): [attr, length], ...}
+    '''
+    paired_bonds = {}
+    for key, item in bonds.items():
+        for i in item:
+            paired_bonds.update({(key, i[0]): i[1::]})
+    return paired_bonds
+
+
 def bonds_to_one_way_dict(bonds):
     d = {}
     for i in bonds:
@@ -57,39 +69,6 @@ def to_two_ways_bond2(one_way_bonds, with_attr=False):
     return two_ways
 
 
-def coordinates_to_notation(info_from_file, valid_length=eps_length, save_length=False):
-    '''
-    :param info_from_file: read_from_file tuple
-    :return: chain in dictionary notation (see above)
-    '''
-    bonds, atoms = info_from_file
-    positions_copy = copy.deepcopy(atoms)
-    notation = {}
-    for key, item in atoms.items():
-        cur_p = positions_copy.pop(key).position()
-        connected = [k for k, ite in atoms.items() if abs(np.linalg.norm(ite.position() - cur_p) - 1) < valid_length]
-        sections = []
-        basis = find_basis(cur_p, [atoms[i].position() for i in connected])
-        for i in connected:
-            sections.append([i, find_section(cur_p, atoms[i].position(), basis0=basis, all_posibility=True)])
-        notation.update({key: [sections, basis]})
-    if save_length:
-        bonds_keeper = {}
-        bonds = bonds_to_one_way_dict(prepare_bonds(bonds))
-        for key, item in notation.items():
-            for i in item[0]:
-                if key < i[0]:
-                    attr = ''
-                    for j in bonds[key]:
-                        if j[0] == i[0]:
-                            attr = j[1]
-                            break
-                    bond = Bond(key, i[0], attr, length=atoms[key].position()-atoms[i[0]].position(), section=i[1])
-                    bonds_keeper.update({(key, i[0]): bond})
-        return notation, bonds_keeper
-    return notation
-
-
 def mol2_to_notation(info_from_file):
     '''
     :param info_from_file: read_from_file tuple
@@ -112,6 +91,30 @@ def mol2_to_notation(info_from_file):
         for i in range(len(item)):
             bonds[key][i].insert(1, np.linalg.norm(atoms[key].position()-atoms[item[i][0]].position()))
     return notation, bonds
+
+
+def dimensional_structure(notation):
+    '''
+    :param notation: Notation with first atom with unique basis for every bond
+    with length
+    :return: xyz-info
+    '''
+    dim_structure = {1: np.array([0, 0, 0])}#, np.array([0, 0])]}
+    bonds_l, lengths = notation
+    p = bonds_l[1]
+    bonds_copy = copy.deepcopy(bonds_l)
+    p.insert(0, 1)  # p[0] - current atom, p[1] - bonds, p[2] - basis of p[0] atom
+    p = [p]
+    while len(p) != 0:
+        cur_key, bonds, basis = p.pop(0)
+        for i in bonds:  # build bonds for cur_key atom
+            if not (i[0] in dim_structure):  # if we don't have position:
+                coord = rotate_by_basis(pp[i[1]], basis[0], basis[1])*(lengths[(cur_key, i[0])][0] if cur_key<i[0] else lengths[(i[0], cur_key)][0]) + dim_structure[cur_key]
+                dim_structure.update({i[0]: coord})
+                poper = bonds_copy.pop(i[0])
+                poper.insert(0, i[0])
+                p.append(poper)
+    return dim_structure
 
 
 def write_mol_file(file_name, atoms, positions, bonds=[], attrs = {}):
@@ -139,7 +142,7 @@ def write_mol_file(file_name, atoms, positions, bonds=[], attrs = {}):
                                                        str(i[1]), attrs[(i[0], i[1])][1] if attrs.get((i[0], i[1])) else attrs[(i[1], i[0])][1]))#str(i[2]) if len(i) > 2 else '1'))
 
 
-def write_mol2_file(file_name, atoms, positions, bonds=[], attrs = {}):
+def write_mol2_file(file_name, atoms, positions, bonds):
     '''
     :param file_name:
     :param names: chemical elements names
@@ -153,15 +156,15 @@ def write_mol2_file(file_name, atoms, positions, bonds=[], attrs = {}):
         f1.write(str(len(atoms))+'\n\n')
         f1.write('@<TRIPOS>ATOM\n')
         for num, key in atoms.items():
-            f1.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\n".format(num+1, key.name, str(key.x),
-                                                   str(key.y), str(key.z), key.name_i,
-                                                                       key.i1, key.i2, key.i3))
+            f1.write("\t{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\n".format(num, key.name, str(positions[num][0]),
+                                                                            str(positions[num][1]), str(positions[num][2]),
+                                                                            key.name_i, key.i1, key.i2, key.i3))
         f1.write('@<TRIPOS>BOND\n')
-        if bonds != []:
-            for num, i in enumerate(bonds):
-                # print(i, 't',attrs.get(tuple([i[0], i[1]])), attrs.get(tuple([i[1], i[0]])))
-                f1.write("{0}\t{1}\t{2}\t{3}\n".format(str(num+1), str(i[0]),
-                                                       str(i[1]), attrs[(i[0], i[1])][1] if attrs.get((i[0], i[1])) else attrs[(i[1], i[0])][1]))#str(i[2]) if len(i) > 2 else '1'))
+
+        for k, num in enumerate(bonds.items()):
+            num, i = num
+            # print(i, 't',attrs.get(tuple([i[0], i[1]])), attrs.get(tuple([i[1], i[0]])))
+            f1.write("\t{0}\t{1}\t{2}\t{3}\n".format(str(k+1), str(num[0]), str(num[1]), str(i[1])))
 
 
 
@@ -206,15 +209,19 @@ def to_two_ways_bond(one_way_bonds, with_attr=False):
     return two_ways
 
 
-
 if __name__ == '__main__':
 ######################mol2_files##############
     '''Test: read from mol2-file by atoms_and_bonds() - function
     allows us get information about every atom;
     xyz_names_bonds()- function
     '''
-    atoms_info = atoms_and_bonds('Aniline.mol2')
-    ln = mol2_to_notation(xyz_names_bonds('Aniline.mol2'))
+    atoms_info = atoms_and_bonds('Caffein.mol2')
+    ln = mol2_to_notation(xyz_names_bonds('Caffein.mol2'))
+    # print(ln)
+    paired = bonds_of_paired(ln[1])
+    dim_structure = dimensional_structure([ln[0], paired])
+    # print(dim_structure)
+    write_mol2_file('My_caffein.mol2', atoms_info, dim_structure, bonds=paired)
     # ln = coordinates_to_notation(xyz_names_bonds('Aniline.mol2'), valid_length=0.5, save_length=True)
     # d31 = dimensional_length_unique_basis(ln)
     # for key, item in d31.items():

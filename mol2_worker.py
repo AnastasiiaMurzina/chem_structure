@@ -26,6 +26,8 @@ class Atom():
     def position(self):
         return np.array([self.x, self.y, self.z])
 
+
+
 class Bond():
     def __init__(self, c1, c2, attr, length=1., sections=0):
         self.connected = {c1, c2} # c1<c2
