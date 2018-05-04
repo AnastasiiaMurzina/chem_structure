@@ -27,18 +27,18 @@ class Atom():
         return np.array([self.x, self.y, self.z])
 
 class Bond():
-    def __init__(self, c1, c2, attr, length=1., section=0):
-        self.connected = {c1, c2}
+    def __init__(self, c1, c2, attr, length=1., sections=0):
+        self.connected = {c1, c2} # c1<c2
         self.attr = attr
         self.length = length
-        self.section = section
+        self.sections = sections # [section_c1, section_c2]
 
     def set_length(self, length):
         self.length = length
 
 
-    def set_section(self, section):
-        self.section = section
+    def set_section(self, sections):
+        self.sections = sections
         
 def read_mol2(file_name):
     with open(file_name, 'r') as f1:
