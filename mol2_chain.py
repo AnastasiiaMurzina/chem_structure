@@ -7,11 +7,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import copy
 
-# fig = plt.figure()
-# ax = fig.add_subplot(111, projection='3d')
 eps_length = 0.001
 pp = get_penta_points()
-
 
 ###########################Builder structure if possile else return fail########################
 def prepare_bonds(bonds):

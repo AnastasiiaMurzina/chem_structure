@@ -27,7 +27,6 @@ class Atom():
         return np.array([self.x, self.y, self.z])
 
 
-
 class Bond():
     def __init__(self, c1, c2, attr, length=1., sections=0):
         self.connected = {c1, c2} # c1<c2
@@ -41,7 +40,8 @@ class Bond():
 
     def set_section(self, sections):
         self.sections = sections
-        
+
+
 def read_mol2(file_name):
     with open(file_name, 'r') as f1:
         all_f = f1.read()
@@ -114,10 +114,6 @@ def atoms_and_bonds(file_name, bonds_choice=False):
         return atoms, bonds
     return atoms
 
-def positions_atoms_bonds(file_name):
-    pass
-
 if __name__ == "__main__":
     # bonds = (xyz_names_bonds('Caffein.mol2')[-1])
-    # import pybel
     atoms = atoms_and_bonds('Caffein.mol2')

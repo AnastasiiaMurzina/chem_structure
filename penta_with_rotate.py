@@ -132,6 +132,9 @@ def rotate_by_basis(point, y, z):
 def rotate_ten_vars(point, var):
     pass
 
+def rotate_non_perpendicular(point, y, z):
+    pass
+
 def point_to_angles(point):
     '''
     :param point: coordinates in Decart basis
@@ -176,9 +179,6 @@ def check_diff_rotate(n_y, n_z):
                         diff = min(diff, np.linalg.norm(i[k] - j[k]))
     return diff
 
-
-# def check_diff_var_rotate(var):
-#     return 0
 
 ###############Rotate const for search#########################
 step_rot = check_diff_rotate(n_y, n_z) * 0.5
@@ -330,25 +330,8 @@ def find_basis_mave(point, connected):
             diff.append(np.mean([np.linalg.norm(v - ppx) for ppx in rotate_by_basis(pp, j[0], j[1])]))
         diffs.append([max(diff), j])
     return min(diffs)[1]
-
-
-# def find_basis_mave(point, connected):
-#     '''
-#     :param point: point for search basis
-#     :param connected: atoms which have bonds with point
-#     :return: basis for point (y, z) by min of max different between point and center of section
-#     '''
-#     diffs = []
-#     pp0 = pp
-#     for j in sorted(product(range(n_y), range(n_z)), key=lambda x: sum(x)):
-#         diff = []
-#         for i in connected:
-#             diff.append(min([np.linalg.norm(i - ppx) for ppx in [point + kk for kk in rotate_by_basis(pp0, j[0], j[1])]]))
-#         diffs.append([max(diff), j])
-#     return min(diffs)[1]
-
-
 ########################################################
+
 
 if __name__ == '__main__':
 ####################find_section_and_rotate tests#####################################
@@ -372,8 +355,6 @@ if __name__ == '__main__':
     #             if not ((i)==find_section(np.zeros(3), rotate_by_basis(pp[i], j[0], j[1])), [j[0],j[1]]):
     #                 print(i, j[0], j[1])
 ############################################################################
-    # print(np.linalg.norm(pp[4] - rotate_by_basis(pp[4], 3, 0)))
-    # print(min([np.linalg.norm(pp[4]-rotate_by_basis(pp[4],1,3)) for i in range(12)]))
     # bs = find_basis(np.array([0, 0, 0]), rotate_by_basis(pp[4], 1, 2))
     # print(bs)
     show_points(pp)
