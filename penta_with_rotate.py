@@ -132,8 +132,22 @@ def rotate_by_basis(point, y, z, n_y=n_y, n_z=n_z):
 def rotate_ten_vars(point, var):
     pass
 
-def rotate_non_perpendicular(point, y, z):
-    pass
+def rotate_non_perpendicular(point, y, z, n_y=n_y, n_z=n_z):
+    arounder = pp[1]-pp[8]
+    W = np.zeros((3, 3))
+    W[0, 1] = -arounder[2]
+    W[0, 2] = arounder[1]
+    W[1, 0] = arounder[2]
+    W[1, 2] = - arounder[0]
+    W[2, 0] = - arounder[1]
+    W[2, 1] = arounder[0]
+    phi = d_ver_angle*y/n_y
+    rotated_matrix = np.eye(3)+np.sin(phi)*W+(2*(np.sin(phi/2)**2))*W**2
+    operator = Rz(d_hor_angle * z / n_z).dot(rotated_matrix)
+    if isinstance(point, (np.ndarray)):
+        return point.dot(operator)
+    return [i.dot(operator) for i in point]
+
 
 def point_to_angles(point):
     '''
@@ -223,7 +237,7 @@ def find_section_and_rotate(p0, p1, n_y=n_y, n_z=n_z, step_rot=step_rot):
     # return ps[1], None
 
 
-def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibility=False):
+def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibility=False, n_y=n_y, n_z=n_z):
     '''
     :param p0: this point has already basis
     :param p1: not important basis of p1
@@ -232,7 +246,7 @@ def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibil
     '''
     vec = p1 - p0
     vec = np.array([i/np.linalg.norm(vec) for i in vec])
-    pp_ = rotate_by_basis(pp, basis0[0], basis0[1])
+    pp_ = rotate_by_basis(pp, basis0[0], basis0[1], n_y=n_y, n_z=n_z)
     if all_posibility:
         return min([[np.linalg.norm(ppx - vec), ix] for ix, ppx in enumerate(pp_)])[1]
     while True:
@@ -357,4 +371,5 @@ if __name__ == '__main__':
 ############################################################################
     # bs = find_basis(np.array([0, 0, 0]), rotate_by_basis(pp[4], 1, 2))
     # print(bs)
-    show_points(pp)
+    # show_points(pp)
+    pass

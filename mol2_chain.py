@@ -1,5 +1,5 @@
 from penta_with_rotate import get_penta_points, find_section,\
-    rotate_by_basis, find_basis, find_basis_mave
+    rotate_by_basis, find_basis, find_basis_mave, rotate_non_perpendicular
 from mol2_worker import xyz_names, xyz_names_bonds, Atom, atoms_and_bonds, Bond
 import numpy as np
 import copy
@@ -79,8 +79,12 @@ def mol2_to_notation(info_from_file, n_y=None, n_z=None):
         connected = [i[0] for i in bonds2[key]]
         basis = find_basis(cur_p, [atoms[i].position() for i in connected])
         atoms[key].set_orientation(basis)
-        notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis)]
+        if n_y!= None and n_z!=None:
+            notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, n_y=n_y, n_z=n_z)]
                                      for i in connected]), basis]})
+        else:
+            notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis)]
+                                         for i in connected]), basis]})
     for key, item in bonds.items():
         for i in range(len(item)):
             bonds[key][i].insert(1, np.linalg.norm(atoms[key].position()-atoms[item[i][0]].position()))
