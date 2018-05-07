@@ -1,5 +1,5 @@
 from penta_with_rotate import get_penta_points, find_section,\
-    rotate_by_basis, find_basis, find_basis_mave, rotate_non_perpendicular
+    rotate_by_basis, find_basis, rotate_non_perpendicular, rotate_ten_vars
 from mol2_worker import xyz_names, xyz_names_bonds, Atom, atoms_and_bonds, Bond
 import numpy as np
 import copy
@@ -63,7 +63,7 @@ def to_two_ways_bond2(one_way_bonds, with_attr=False):
     return two_ways
 
 
-def mol2_to_notation(info_from_file, n_y=None, n_z=None):
+def mol2_to_notation(info_from_file, n_y=None, n_z=None, method='first'):
     '''
     :param info_from_file: read_from_file tuple
     WARNING: may be keep Atoms without coordinates and Bonds with sections
@@ -77,21 +77,24 @@ def mol2_to_notation(info_from_file, n_y=None, n_z=None):
     for key, item in atoms.items():
         cur_p = positions_copy.pop(key).position()
         connected = [i[0] for i in bonds2[key]]
-        basis = find_basis(cur_p, [atoms[i].position() for i in connected])
-        atoms[key].set_orientation(basis)
-        if n_y!= None and n_z!=None:
-            notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, n_y=n_y, n_z=n_z)]
-                                     for i in connected]), basis]})
-        else:
-            notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis)]
+        if n_y == None or n_z == None:
+            basis = find_basis(cur_p, [atoms[i].position() for i in connected], method=method)
+            # print(basis)
+            notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, method=method)]
                                          for i in connected]), basis]})
+        else:
+            basis = find_basis(cur_p, [atoms[i].position() for i in connected], n_y=n_y, n_z=n_z, method=method)
+            # print(basis)
+        atoms[key].set_orientation(basis)
+        notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, n_y=n_y, n_z=n_z, method=method)]
+                                     for i in connected]), basis]})
     for key, item in bonds.items():
         for i in range(len(item)):
             bonds[key][i].insert(1, np.linalg.norm(atoms[key].position()-atoms[item[i][0]].position()))
     return notation, bonds
 
 
-def dimensional_structure(notation, n_y=None, n_z=None):
+def dimensional_structure(notation, n_y=None, n_z=None, method='first'):
     '''
     :param notation: Notation with first atom with unique basis for every bond
     with length
@@ -107,14 +110,29 @@ def dimensional_structure(notation, n_y=None, n_z=None):
         cur_key, bonds, basis = p.pop(0)
         for i in bonds:  # build bonds for cur_key atom
             if not (i[0] in dim_structure):  # if we don't have position:
-                if n_y!=None and n_z!=None:
-                    coord = rotate_by_basis(pp[i[1]], basis[0], basis[1], n_y=n_y, n_z=n_z)*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
-                                                                                             else lengths[(i[0], cur_key)][0]) \
+                if method=='first':
+                    if n_y!=None and n_z!=None:
+                        coord = rotate_by_basis(pp[i[1]], basis[0], basis[1], n_y=n_y, n_z=n_z)*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
+                                                                                                 else lengths[(i[0], cur_key)][0]) \
+                                + dim_structure[cur_key]
+                    else:
+                        coord = rotate_by_basis(pp[i[1]], basis[0], basis[1])*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
+                                                                           else lengths[(i[0], cur_key)][0])\
                             + dim_structure[cur_key]
-                else:
-                    coord = rotate_by_basis(pp[i[1]], basis[0], basis[1])*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
-                                                                       else lengths[(i[0], cur_key)][0])\
-                        + dim_structure[cur_key]
+                elif method == 'incline':
+                    if n_y!=None and n_z!=None:
+                        coord = rotate_non_perpendicular(pp[i[1]], basis[0], basis[1], n_y=n_y, n_z=n_z)*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
+                                                                                                 else lengths[(i[0], cur_key)][0]) \
+                                + dim_structure[cur_key]
+                    else:
+                        coord = rotate_non_perpendicular(pp[i[1]], basis[0], basis[1])*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
+                                                                           else lengths[(i[0], cur_key)][0])\
+                            + dim_structure[cur_key]
+                elif method == 'ten':
+                    coord = rotate_ten_vars(pp[i[1]], basis)*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
+                                                                                                 else lengths[(i[0], cur_key)][0]) \
+                                + dim_structure[cur_key]
+
                 dim_structure.update({i[0]: coord})
                 poper = bonds_copy.pop(i[0])
                 poper.insert(0, i[0])

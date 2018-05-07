@@ -85,6 +85,57 @@ def get_penta_points(point_center=np.zeros(3)):
 
 
 pp = get_penta_points()
+###################################################
+def show_points(points):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for i in points:
+        ax.scatter(i[0], i[1], i[2])
+    plt.show()
+
+
+def show_named_points(named_points):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for key, i in named_points.items():
+        ax.scatter(i[0][0], i[0][1], i[0][2])
+        ax.text(i[0][0], i[0][1], i[0][2], str(key))
+    plt.show()
+
+def show_named_points1(named_points):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for key, i in named_points.items():
+        ax.scatter(i[0], i[1], i[2])
+        ax.text(i[0], i[1], i[2], str(key))
+    plt.show()
+
+#########################angles###########################
+def show_points_by_angles(center, angles, labels=False):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    if labels:
+        for item, i in angles.items():
+            ax.scatter(center[0] + cos(i[0]) * sin(i[1]), center[1] + sin(i[0]) * sin(i[1]), center[2] + cos(i[1]))
+            ax.text(center[0] + cos(i[0]) * sin(i[1]), center[1] + sin(i[0]) * sin(i[1]), center[2] + cos(i[1]), item)
+    else:
+        for item, i in angles.items():
+            ax.scatter(center[0] + cos(i[0]) * cos(i[1]), center[1] + sin(i[0]) * cos(i[1]), center[2] + sin(i[1]))
+    plt.show()
+
+
+def get_penta_angles():
+    angles = [np.array([0, pi / 2])]
+    init_angle = 0
+    for i in range(5):
+        init_angle += (2 * pi / 5) % (2 * pi)
+        angles.append(np.array([init_angle, asin(sin(angle) / 2)]))
+    # print(sin(angle)/2)
+    angles.append(np.array([0, -pi / 2]))
+    for i in range(5):
+        init_angle += (2 * pi / 5) % (2 * pi)
+        angles.append(np.array([init_angle, -asin(sin(angle) / 2)]))
+    return angles
 ##############################Rotate dodecahedron#########################################
 def Rx(x_angle):
     '''
@@ -129,8 +180,19 @@ def rotate_by_basis(point, y, z, n_y=n_y, n_z=n_z):
     return [i.dot(operator) for i in point]
 
 
-def rotate_ten_vars(point, var):
-    pass
+def rotate_ten_vars(point, i1):
+    # show_points()
+    b = list(product([-0.5, 0, 0.5], repeat=2))
+    # print(b)
+    operator = Rz(d_hor_angle*b[i1][0]).dot(Ry(d_ver_angle*b[i1][1]))
+    pp_ = [i.dot(operator) for i in pp]
+    for i in pp:
+        pp_.append(i)
+        # show_points(pp_)
+    # operator = []
+    if isinstance(point, (np.ndarray)):
+        return point.dot(operator)
+    return [i.dot(operator) for i in point]
 
 def rotate_non_perpendicular(point, y, z, n_y=n_y, n_z=n_z):
     arounder = pp[1]-pp[8]
@@ -200,44 +262,10 @@ step_rot = check_diff_rotate(n_y, n_z) * 0.5
 
 # print(step_rot)
 # step_rot = 0.0525
-#################Checkers################################
-def find_section_and_rotate(p0, p1, n_y=n_y, n_z=n_z, step_rot=step_rot):
-    '''
-    :param p0: another point, we'll find section in which this point relatively p1
-    :param p1: point for this one we are looking for basis
-    :return: section for p1-p0 bond (p0 is in section of p1) and rotated basis of p1
-    '''
-    wanted = p0 - p1
-    sums = []
-    wanted /= np.linalg.norm(wanted)
-    available_sections_y = tuple(range(n_y))
-    available_sections_z = tuple(range(n_z))
-    for num, i in enumerate(pp):
-        diff = np.linalg.norm(wanted - i)
-        if diff < 1.2 * a / (np.sin(pi / 3)):#h*(2*(1+5**(-0.5)))**0.5/(2*sin(pi/3)):
-            diffs = [rotate_by_basis(pp[num], n_y - 1, n_z - 1) - wanted,
-                     rotate_by_basis(pp[num], n_y - 1, 0) - wanted,
-                     rotate_by_basis(pp[num], 0, n_z - 1) - wanted,
-                     rotate_by_basis(pp[num], 0, 0) - wanted]
-            s = sum([np.linalg.norm(i) for i in diffs])
-            sums.append([s, num])
-    # possible problems: 0 and 6 sections
-    sums.sort()
-    sums2 = deepcopy(sums)
-    eps_rot = step_rot
-    while True:
-        sums = deepcopy(sums2)
-        while len(sums):
-            ps = sums.pop(0)
-            for j in sorted(product(available_sections_y, available_sections_z), key=lambda x: sum(x)):
-                if np.linalg.norm(rotate_by_basis(pp[ps[1]], j[0], j[1]) - wanted) < eps_rot:
-                    return ps[1], j[0], j[1]
-        eps_rot*=1.2
-
-    # return ps[1], None
+#################Checkers#############
 
 
-def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibility=False, n_y=n_y, n_z=n_z):
+def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibility=False, n_y=n_y, n_z=n_z, method='first'):
     '''
     :param p0: this point has already basis
     :param p1: not important basis of p1
@@ -246,7 +274,12 @@ def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibil
     '''
     vec = p1 - p0
     vec = np.array([i/np.linalg.norm(vec) for i in vec])
-    pp_ = rotate_by_basis(pp, basis0[0], basis0[1], n_y=n_y, n_z=n_z)
+    if method == 'first':
+        pp_ = rotate_by_basis(pp, basis0[0], basis0[1], n_y=n_y, n_z=n_z)
+    elif method == 'incline':
+        pp_ = rotate_non_perpendicular(pp, basis0[0], basis0[1], n_y=n_y, n_z=n_z)
+    elif method == 'ten':
+        pp_ = rotate_ten_vars(pp, basis0)
     if all_posibility:
         return min([[np.linalg.norm(ppx - vec), ix] for ix, ppx in enumerate(pp_)])[1]
     while True:
@@ -256,95 +289,46 @@ def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibil
         let_accurance *= 1.1
 
 
-def get_reversed_section_and_basis(s, b0):
-    return find_section_and_rotate(np.zeros(3), rotate_by_basis(pp[s], b0[0], b0[1]))
-
-###################################################
-def show_points(points):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    for i in points:
-        ax.scatter(i[0], i[1], i[2])
-    plt.show()
+# def get_reversed_section_and_basis(s, b0):
+#     return find_section_and_rotate(np.zeros(3), rotate_by_basis(pp[s], b0[0], b0[1]))
 
 
-def show_named_points(named_points):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    for key, i in named_points.items():
-        ax.scatter(i[0][0], i[0][1], i[0][2])
-        ax.text(i[0][0], i[0][1], i[0][2], str(key))
-    plt.show()
-
-def show_named_points1(named_points):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    for key, i in named_points.items():
-        ax.scatter(i[0], i[1], i[2])
-        ax.text(i[0], i[1], i[2], str(key))
-    plt.show()
-
-#########################angles###########################
-def show_points_by_angles(center, angles, labels=False):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    if labels:
-        for item, i in angles.items():
-            ax.scatter(center[0] + cos(i[0]) * sin(i[1]), center[1] + sin(i[0]) * sin(i[1]), center[2] + cos(i[1]))
-            ax.text(center[0] + cos(i[0]) * sin(i[1]), center[1] + sin(i[0]) * sin(i[1]), center[2] + cos(i[1]), item)
-    else:
-        for item, i in angles.items():
-            ax.scatter(center[0] + cos(i[0]) * cos(i[1]), center[1] + sin(i[0]) * cos(i[1]), center[2] + sin(i[1]))
-    plt.show()
-
-
-def get_penta_angles():
-    angles = [np.array([0, pi / 2])]
-    init_angle = 0
-    for i in range(5):
-        init_angle += (2 * pi / 5) % (2 * pi)
-        angles.append(np.array([init_angle, asin(sin(angle) / 2)]))
-    # print(sin(angle)/2)
-    angles.append(np.array([0, -pi / 2]))
-    for i in range(5):
-        init_angle += (2 * pi / 5) % (2 * pi)
-        angles.append(np.array([init_angle, -asin(sin(angle) / 2)]))
-    return angles
-
-
-def find_basis(point, connected, n_y=n_y, n_z=n_z):
+def find_basis(point, connected, n_y=n_y, n_z=n_z, method='first'):
     '''
     :param point: point for search basis
     :param connected: atoms which have bonds with point
     :return: basis for point (y, z) by min of max different between point and center of section
     '''
     diffs = []
-    for j in sorted(product(range(n_y), range(n_z)), key=lambda x: sum(x)):
-        diff = []
-        for i in connected:
-            v = i - point
-            v /= np.linalg.norm(v)
-            diff.append(min([np.linalg.norm(v - ppx) for ppx in rotate_by_basis(pp, j[0], j[1])]))
-        diffs.append([max(diff), j])
+    if method=='first':
+        for j in sorted(product(range(n_y), range(n_z)), key=lambda x: sum(x)):
+            diff = []
+            for i in connected:
+                v = i - point
+                v /= np.linalg.norm(v)
+                diff.append(min([np.linalg.norm(v - ppx) for ppx in rotate_by_basis(pp, j[0], j[1], n_y=n_y, n_z=n_z)]))
+            diffs.append([max(diff), j])
+        return min(diffs)[1]
+    if method == 'incline':
+        for j in sorted(product(range(n_y), range(n_z)), key=lambda x: sum(x)):
+            diff = []
+            for i in connected:
+                v = i - point
+                v /= np.linalg.norm(v)
+                diff.append(min([np.linalg.norm(v - ppx) for ppx in rotate_non_perpendicular(pp, j[0], j[1], n_y=n_y, n_z=n_z)]))
+            diffs.append([max(diff), j])
+    if method == 'ten':
+        for j in range(9):
+            diff = []
+            for i in connected:
+                v = i - point
+                v /= np.linalg.norm(v)
+                diff.append(min([np.linalg.norm(v - ppx) for ppx in
+                                 rotate_ten_vars(pp, j)]))
+            diffs.append([max(diff), j])
+        # return min(diff)[1]
     return min(diffs)[1]
 
-
-def find_basis_mave(point, connected):
-    '''
-    :param point: point for search basis
-    :param connected: atoms which have bonds with point
-    :return: basis for point (y, z) by min of max different between point and center of section
-    '''
-    diffs = []
-    for j in sorted(product(range(n_y), range(n_z)), key=lambda x: sum(x)):
-        diff = []
-        for i in connected:
-            v = i - point
-            v /= np.linalg.norm(v)
-            diff.append(np.mean([np.linalg.norm(v - ppx) for ppx in rotate_by_basis(pp, j[0], j[1])]))
-        diffs.append([max(diff), j])
-    return min(diffs)[1]
-########################################################
 
 
 if __name__ == '__main__':
