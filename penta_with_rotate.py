@@ -116,7 +116,7 @@ def Rz(z_angle):
     return R_z
 
 
-def rotate_by_basis(point, y, z):
+def rotate_by_basis(point, y, z, n_y=n_y, n_z=n_z):
     '''
     :param point: array or one point to rotate
     :param y: first coordinate of rotation
@@ -187,7 +187,7 @@ step_rot = check_diff_rotate(n_y, n_z) * 0.5
 # print(step_rot)
 # step_rot = 0.0525
 #################Checkers################################
-def find_section_and_rotate(p0, p1):
+def find_section_and_rotate(p0, p1, n_y=n_y, n_z=n_z, step_rot=step_rot):
     '''
     :param p0: another point, we'll find section in which this point relatively p1
     :param p1: point for this one we are looking for basis
@@ -298,7 +298,7 @@ def get_penta_angles():
     return angles
 
 
-def find_basis(point, connected):
+def find_basis(point, connected, n_y=n_y, n_z=n_z):
     '''
     :param point: point for search basis
     :param connected: atoms which have bonds with point

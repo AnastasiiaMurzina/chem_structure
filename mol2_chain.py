@@ -1,10 +1,7 @@
-from penta_with_rotate import get_penta_points, find_section, find_section_and_rotate,\
-    show_points, rotate_by_basis, show_named_points, get_reversed_section_and_basis, \
-    show_named_points1, find_basis, find_basis_mave
+from penta_with_rotate import get_penta_points, find_section,\
+    rotate_by_basis, find_basis, find_basis_mave
 from mol2_worker import xyz_names, xyz_names_bonds, Atom, atoms_and_bonds, Bond
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import copy
 
 eps_length = 0.001
@@ -66,7 +63,7 @@ def to_two_ways_bond2(one_way_bonds, with_attr=False):
     return two_ways
 
 
-def mol2_to_notation(info_from_file):
+def mol2_to_notation(info_from_file, n_y=None, n_z=None):
     '''
     :param info_from_file: read_from_file tuple
     WARNING: may be keep Atoms without coordinates and Bonds with sections
@@ -90,7 +87,7 @@ def mol2_to_notation(info_from_file):
     return notation, bonds
 
 
-def dimensional_structure(notation):
+def dimensional_structure(notation, n_y=None, n_z=None):
     '''
     :param notation: Notation with first atom with unique basis for every bond
     with length
@@ -106,7 +103,12 @@ def dimensional_structure(notation):
         cur_key, bonds, basis = p.pop(0)
         for i in bonds:  # build bonds for cur_key atom
             if not (i[0] in dim_structure):  # if we don't have position:
-                coord = rotate_by_basis(pp[i[1]], basis[0], basis[1])*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
+                if n_y!=None and n_z!=None:
+                    coord = rotate_by_basis(pp[i[1]], basis[0], basis[1], n_y=n_y, n_z=n_z)*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
+                                                                                             else lengths[(i[0], cur_key)][0]) \
+                            + dim_structure[cur_key]
+                else:
+                    coord = rotate_by_basis(pp[i[1]], basis[0], basis[1])*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
                                                                        else lengths[(i[0], cur_key)][0])\
                         + dim_structure[cur_key]
                 dim_structure.update({i[0]: coord})
