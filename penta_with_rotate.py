@@ -181,9 +181,7 @@ def rotate_by_basis(point, y, z, n_y=n_y, n_z=n_z):
 
 
 def rotate_ten_vars(point, i1):
-    # show_points()
-    b = list(product([-0.5, 0, 0.5], repeat=2))
-    # print(b)
+    b = list(product([-0.8, 0, 0.8], repeat=2))
     operator = Rz(d_hor_angle*b[i1][0]).dot(Ry(d_ver_angle*b[i1][1]))
     pp_ = [i.dot(operator) for i in pp]
     for i in pp:
@@ -194,8 +192,8 @@ def rotate_ten_vars(point, i1):
         return point.dot(operator)
     return [i.dot(operator) for i in point]
 
-def rotate_non_perpendicular(point, y, z, n_y=n_y, n_z=n_z):
-    arounder = pp[1]-pp[8]
+def rotate_non_perpendicular(point, y, z, n_y=n_y, n_z=n_z, fr=1, sr=6): # fr=1..2; sr=6..10
+    arounder = pp[fr]-pp[sr]
     W = np.zeros((3, 3))
     W[0, 1] = -arounder[2]
     W[0, 2] = arounder[1]
@@ -265,7 +263,7 @@ step_rot = check_diff_rotate(n_y, n_z) * 0.5
 #################Checkers#############
 
 
-def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibility=False, n_y=n_y, n_z=n_z, method='first'):
+def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibility=False, n_y=n_y, n_z=n_z, method='first', fr=None,sr=None):
     '''
     :param p0: this point has already basis
     :param p1: not important basis of p1
@@ -277,7 +275,10 @@ def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibil
     if method == 'first':
         pp_ = rotate_by_basis(pp, basis0[0], basis0[1], n_y=n_y, n_z=n_z)
     elif method == 'incline':
-        pp_ = rotate_non_perpendicular(pp, basis0[0], basis0[1], n_y=n_y, n_z=n_z)
+        if fr == None:
+            pp_ = rotate_non_perpendicular(pp, basis0[0], basis0[1], n_y=n_y, n_z=n_z)
+        else:
+            pp_ = rotate_non_perpendicular(pp, basis0[0], basis0[1], n_y=n_y, n_z=n_z,fr=fr,sr=sr)
     elif method == 'ten':
         pp_ = rotate_ten_vars(pp, basis0)
     if all_posibility:
@@ -293,7 +294,7 @@ def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibil
 #     return find_section_and_rotate(np.zeros(3), rotate_by_basis(pp[s], b0[0], b0[1]))
 
 
-def find_basis(point, connected, n_y=n_y, n_z=n_z, method='first'):
+def find_basis(point, connected, n_y=n_y, n_z=n_z, fr=None, sr=None, method='first'):
     '''
     :param point: point for search basis
     :param connected: atoms which have bonds with point
@@ -315,7 +316,12 @@ def find_basis(point, connected, n_y=n_y, n_z=n_z, method='first'):
             for i in connected:
                 v = i - point
                 v /= np.linalg.norm(v)
-                diff.append(min([np.linalg.norm(v - ppx) for ppx in rotate_non_perpendicular(pp, j[0], j[1], n_y=n_y, n_z=n_z)]))
+                if fr == None:
+                    diff.append(min([np.linalg.norm(v - ppx) for ppx in rotate_non_perpendicular(pp, j[0], j[1], n_y=n_y, n_z=n_z)]))
+                else:
+                    diff.append(min([np.linalg.norm(v - ppx) for ppx in
+                                     rotate_non_perpendicular(pp, j[0], j[1], n_y=n_y, n_z=n_z, fr=fr,sr=sr)]))
+
             diffs.append([max(diff), j])
     if method == 'ten':
         for j in range(9):

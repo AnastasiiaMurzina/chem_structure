@@ -63,7 +63,7 @@ def to_two_ways_bond2(one_way_bonds, with_attr=False):
     return two_ways
 
 
-def mol2_to_notation(info_from_file, n_y=None, n_z=None, method='first'):
+def mol2_to_notation(info_from_file, n_y=None, n_z=None, method='first', fr=None, sr=None):
     '''
     :param info_from_file: read_from_file tuple
     WARNING: may be keep Atoms without coordinates and Bonds with sections
@@ -83,10 +83,11 @@ def mol2_to_notation(info_from_file, n_y=None, n_z=None, method='first'):
             notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, method=method)]
                                          for i in connected]), basis]})
         else:
-            basis = find_basis(cur_p, [atoms[i].position() for i in connected], n_y=n_y, n_z=n_z, method=method)
+            basis = find_basis(cur_p, [atoms[i].position() for i in connected], n_y=n_y, n_z=n_z, method=method, fr=fr,sr=sr)
             # print(basis)
         atoms[key].set_orientation(basis)
-        notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, n_y=n_y, n_z=n_z, method=method)]
+
+        notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, n_y=n_y, n_z=n_z, method=method, fr=fr, sr=sr)]
                                      for i in connected]), basis]})
     for key, item in bonds.items():
         for i in range(len(item)):
@@ -94,7 +95,7 @@ def mol2_to_notation(info_from_file, n_y=None, n_z=None, method='first'):
     return notation, bonds
 
 
-def dimensional_structure(notation, n_y=None, n_z=None, method='first'):
+def dimensional_structure(notation, n_y=None, n_z=None, fr=None, sr=None, method='first'):
     '''
     :param notation: Notation with first atom with unique basis for every bond
     with length
@@ -121,7 +122,13 @@ def dimensional_structure(notation, n_y=None, n_z=None, method='first'):
                             + dim_structure[cur_key]
                 elif method == 'incline':
                     if n_y!=None and n_z!=None:
-                        coord = rotate_non_perpendicular(pp[i[1]], basis[0], basis[1], n_y=n_y, n_z=n_z)*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
+                        if fr!=None and sr!=None:
+                            coord = rotate_non_perpendicular(pp[i[1]], basis[0], basis[1], n_y=n_y, n_z=n_z, fr=fr, sr=sr) * (
+                                lengths[(cur_key, i[0])][0] if cur_key < i[0]
+                                else lengths[(i[0], cur_key)][0]) \
+                                    + dim_structure[cur_key]
+                        else:
+                            coord = rotate_non_perpendicular(pp[i[1]], basis[0], basis[1], n_y=n_y, n_z=n_z)*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
                                                                                                  else lengths[(i[0], cur_key)][0]) \
                                 + dim_structure[cur_key]
                     else:
