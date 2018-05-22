@@ -117,6 +117,10 @@ def dimensional_structure(notation, left=-1, right=1):
 
 
 def symmetrical_errors(atom_name):
+    '''
+    :param atom_name: begin of mol2-file name for reading structure
+    :return: graphic depend correctly coefficient of parameter ten-rotated basis method
+    '''
     x = np.linspace(-1, 0, 50)
     y = []
     tmpdir = tempfile.mkdtemp()
@@ -147,7 +151,12 @@ def symmetrical_errors(atom_name):
     plt.show()
 
 
-def asymmetrical_errors(atom_name):
+def asymmetrical_errors(atom_name, save=False):
+    '''
+    :param atom_name: begin of mol2-file name for reading structure
+    :param save: save in pdf - boolean
+    :return: graphic depend correctly coefficient of parameter ten-rotated basis method
+    '''
     x = np.linspace(-1, 0, 5)
     y = np.linspace(0, 1, 5)
     z = []
@@ -180,14 +189,17 @@ def asymmetrical_errors(atom_name):
     ax = fig.add_subplot(111, projection='3d')
     ax.plot_surface(x, y, z, cmap=cm.coolwarm,
                     linewidth=0, antialiased=False)
-    plt.show()
+    if save:
+        plt.savefig(atom_name, format='pdf')
+    else:
+        plt.show()
 
 
 if __name__ == '__main__':
-    atom_name = "vacuum_cation_singlet_Fe"
+    atom_name = "solution_neural_Ru_eaxial"
     '''
     Methods: 'first' - perpendicular rotations;
     'incline' - non-perpendicular (also possible choose second axis)
     'ten' - fixed ten rotation position (radial rotation)'''
     # mth = 'ten'
-    asymmetrical_errors(atom_name)
+    asymmetrical_errors(atom_name, save=False)

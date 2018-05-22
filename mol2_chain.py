@@ -63,7 +63,7 @@ def to_two_ways_bond2(one_way_bonds, with_attr=False):
     return two_ways
 
 
-def mol2_to_notation(info_from_file, n_y=None, n_z=None, method='first', fr=None, sr=None):
+def mol2_to_notation(info_from_file, n_y=4, n_z=4, method='first', fr=None, sr=None):
     '''
     :param info_from_file: read_from_file tuple
     WARNING: may be keep Atoms without coordinates and Bonds with sections
@@ -101,11 +101,12 @@ def dimensional_structure(notation, n_y=None, n_z=None, fr=None, sr=None, method
     with length
     :return: xyz-info
     '''
-    dim_structure = {1: np.array([0, 0, 0])}#, np.array([0, 0])]}
     bonds_l, lengths = notation
-    p = bonds_l[1]
+    first_atom = min(bonds_l.keys())
+    dim_structure = {first_atom: np.array([0, 0, 0])}#, np.array([0, 0])]}
+    p = bonds_l[first_atom]
     bonds_copy = copy.deepcopy(bonds_l)
-    p.insert(0, 1)  # p[0] - current atom, p[1] - bonds, p[2] - basis of p[0] atom
+    p.insert(0, first_atom)  # p[0] - current atom, p[1] - bonds, p[2] - basis of p[0] atom
     p = [p]
     while len(p) != 0:
         cur_key, bonds, basis = p.pop(0)
@@ -212,17 +213,118 @@ def to_two_ways_bond(one_way_bonds, with_attr=False):
             two_ways.update({i[1]: [i[0]]})
     return two_ways
 
+def molecular_divider(atoms, bonds):
+    '''
+    :param atoms: bonds, atoms = xyz_names_bonds()
+    :return: {atom_num: mol_num} (prob. later: div_atoms - dictionary like {mol_num: [atoms_of_this_molecule], ...},)
+     [lig_as] - list of dictionaries with atoms of structure
+     [lig_bs] - list of dictionaries with bonds of structure
+    '''
+    atom_names = set([j.i2 for _, j in atoms.items()])
+    div_atoms, ligs_atoms, ligs_bonds = {}, {}, {}
+    for ix, atom in enumerate(atom_names):
+        lig_as = dict(filter(lambda x: x[1].i2 == atom, atoms.items()))
+        lig_bs = list(filter(lambda x: x[0] in lig_as.keys() or x[1] in lig_as.keys(), bonds))
+        for lig in lig_as:
+            div_atoms.update({lig: ix})
+        ligs_atoms.update({ix: lig_as})
+        ligs_bonds.update({ix: lig_bs})
+    return div_atoms, ligs_atoms, ligs_bonds
+
+
+def get_notation_many_mols(atoms, bonds):
+    '''
+    :param atoms:
+    :param bonds: bonds, atoms = xyz_names_bonds()
+    :return: dictionary of notations for every molecule
+    for atoms and for bonds separatedly
+    '''
+    div_atoms, ligs_as, lig_bonds = molecular_divider(atoms, bonds)
+    not_atoms, not_bonds = {}, {}
+    for i in ligs_as.keys():
+        lig_as = ligs_as[i]
+        lig_bs = lig_bonds[i]
+        if lig_bs != []:
+            ln = mol2_to_notation([lig_bs, lig_as])
+            not_atoms.update({i: ln[0]})
+            not_bonds.update({i: ln[1]})
+        else:
+            not_bonds.update({i: []})
+            not_atoms.update({i: [ixx for ixx in lig_as.keys()][0]})
+    return not_atoms, not_bonds
+
 
 if __name__ == '__main__':
-######################mol2_files##############
     '''Test: read from mol2-file by atoms_and_bonds() - function
     allows us get information about every atom;
     xyz_names_bonds()- function
     '''
-    name = 'solution_neural_Ru_eaxial'
-    atoms_info = atoms_and_bonds(name + '.mol2')
-    ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'))
-    print(ln)
-    paired = bonds_of_paired(ln[1])
-    dim_structure = dimensional_structure([ln[0], paired])
-    write_mol2_file('My_'+name+'.mol2', atoms_info, dim_structure, bonds=paired)
+
+    name = 'vacuum_cation_singlet_Fe_full'
+    bs, ass = xyz_names_bonds(name + '.mol2')
+    # atoms_info = atoms_and_bonds(name + '.mol2')
+    # print(atoms_info)
+    div_atoms, ligs_as, lig_bonds = molecular_divider(ass, bs)
+    atoms_notation, bonds_notation = get_notation_many_mols(ass, bs)
+
+    # print(div_atoms)
+    atoms = set([j.i2 for _, j in ass.items()])
+    nots = []
+    div_atoms = {}
+    for ix, atom in enumerate(atoms):
+        lig_as = dict(filter(lambda x: x[1].i2 == atom, ass.items()))
+        lig_bs = list(filter(lambda x: x[0] in lig_as.keys() or x[1] in lig_as.keys(), bs))
+        if lig_bs != []:
+            ln = mol2_to_notation([lig_bs, lig_as])
+            nots.append(ln)
+            # dd = dimensional_structure([ln[0], bonds_of_paired(ln[1])])
+        else:
+            nots.append([lig_as, []])
+        for lig_one in lig_as:
+            div_atoms.update({lig_one: ix})
+        #     print(lig_as)
+    # print([len(i[0]) for i in nots])
+    finder = sorted(nots, key=lambda x: len(x[0]))
+    mol_lengths = [len(i[0]) for i in finder]
+    num_mols = len(finder)
+    connecters = []
+    for i in range(num_mols - 1):
+        cur_atoms = set(finder[i][0].keys())
+        meta_dists = []
+        distances = []
+        for k in cur_atoms:
+            for key, ik in ass.items():
+                distances.append((np.linalg.norm(ass[k].position()-ik.position()), key, k))
+        connecteds = sorted(distances)
+        fuller = {j: 0 for j in range(num_mols) if j != i}
+        for j in connecteds[mol_lengths[i]::]:
+            if div_atoms[j[1]] != i and div_atoms[j[1]] != div_atoms[j[2]] and fuller[div_atoms[j[1]]] < 2:
+                connecters.append((j[2], j[1]))
+                fuller[div_atoms[j[1]]] += 1
+    print(connecters)
+    zero_bonds = {}
+    for ix, i in enumerate(connecters):
+        c1, c2 = sorted(i)
+        p1 = ass[i[0]].position()
+        p2 = ass[i[1]].position()
+        zero_bonds.update({ix: Bond(c1, c2, '0', length=np.linalg.norm(p1-p2), sections=[find_section(p1, p2), find_section(p2, p1)])})
+
+                # print(ass[k])
+        # print(finder[0][0].keys())
+        # finder_c = list(filter(lambda x: set(x[0].keys()).intersection(cur_atoms) == {}, finder))
+        # print(finder_c)
+
+        # find_two_nearest_atoms
+        # for j in cur_atoms.keys():
+        #     finder_c.pop(j)
+        # print(cur_atoms)
+
+
+
+    # write_mol2_file("My_one_atom.mol2", lig_as, dd, bonds=bonds_of_paired(ln[1]))
+    # (xyz_names_bonds(name + '.mol2'))
+    # ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'))
+    # print(ln)
+    # paired = bonds_of_paired(ln[1])
+    # dim_structure = dimensional_structure([ln[0], paired])
+    # write_mol2_file('My_'+name+'.mol2', atoms_info, dim_structure, bonds=paired)
