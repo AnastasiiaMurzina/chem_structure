@@ -1,8 +1,10 @@
-from penta_with_rotate import get_penta_points, find_section,\
-    rotate_by_basis, find_basis, rotate_non_perpendicular, rotate_ten_vars
-from mol2_worker import xyz_names, xyz_names_bonds, Atom, atoms_and_bonds, Bond
 import numpy as np
 import copy
+from penta_with_rotate import get_penta_points, find_section,\
+    rotate_by_basis, find_basis, rotate_non_perpendicular, rotate_ten_vars
+
+from mol2_worker import xyz_names, xyz_names_bonds, Atom, atoms_and_bonds, Bond
+# from many_mols import molecular_divider, get_notation_many_mols, insert_zero_bonds
 
 eps_length = 0.001
 pp = get_penta_points()
@@ -213,45 +215,6 @@ def to_two_ways_bond(one_way_bonds, with_attr=False):
             two_ways.update({i[1]: [i[0]]})
     return two_ways
 
-def molecular_divider(atoms, bonds):
-    '''
-    :param atoms: bonds, atoms = xyz_names_bonds()
-    :return: {atom_num: mol_num} (prob. later: div_atoms - dictionary like {mol_num: [atoms_of_this_molecule], ...},)
-     [lig_as] - list of dictionaries with atoms of structure
-     [lig_bs] - list of dictionaries with bonds of structure
-    '''
-    atom_names = set([j.i2 for _, j in atoms.items()])
-    div_atoms, ligs_atoms, ligs_bonds = {}, {}, {}
-    for ix, atom in enumerate(atom_names):
-        lig_as = dict(filter(lambda x: x[1].i2 == atom, atoms.items()))
-        lig_bs = list(filter(lambda x: x[0] in lig_as.keys() or x[1] in lig_as.keys(), bonds))
-        for lig in lig_as:
-            div_atoms.update({lig: ix})
-        ligs_atoms.update({ix: lig_as})
-        ligs_bonds.update({ix: lig_bs})
-    return div_atoms, ligs_atoms, ligs_bonds
-
-
-def get_notation_many_mols(atoms, bonds):
-    '''
-    :param atoms:
-    :param bonds: bonds, atoms = xyz_names_bonds()
-    :return: dictionary of notations for every molecule
-    for atoms and for bonds separatedly
-    '''
-    div_atoms, ligs_as, lig_bonds = molecular_divider(atoms, bonds)
-    not_atoms, not_bonds = {}, {}
-    for i in ligs_as.keys():
-        lig_as = ligs_as[i]
-        lig_bs = lig_bonds[i]
-        if lig_bs != []:
-            ln = mol2_to_notation([lig_bs, lig_as])
-            not_atoms.update({i: ln[0]})
-            not_bonds.update({i: ln[1]})
-        else:
-            not_bonds.update({i: []})
-            not_atoms.update({i: [ixx for ixx in lig_as.keys()][0]})
-    return not_atoms, not_bonds
 
 
 if __name__ == '__main__':
@@ -264,60 +227,6 @@ if __name__ == '__main__':
     bs, ass = xyz_names_bonds(name + '.mol2')
     # atoms_info = atoms_and_bonds(name + '.mol2')
     # print(atoms_info)
-    div_atoms, ligs_as, lig_bonds = molecular_divider(ass, bs)
-    atoms_notation, bonds_notation = get_notation_many_mols(ass, bs)
-
-    # print(div_atoms)
-    atoms = set([j.i2 for _, j in ass.items()])
-    nots = []
-    div_atoms = {}
-    for ix, atom in enumerate(atoms):
-        lig_as = dict(filter(lambda x: x[1].i2 == atom, ass.items()))
-        lig_bs = list(filter(lambda x: x[0] in lig_as.keys() or x[1] in lig_as.keys(), bs))
-        if lig_bs != []:
-            ln = mol2_to_notation([lig_bs, lig_as])
-            nots.append(ln)
-            # dd = dimensional_structure([ln[0], bonds_of_paired(ln[1])])
-        else:
-            nots.append([lig_as, []])
-        for lig_one in lig_as:
-            div_atoms.update({lig_one: ix})
-        #     print(lig_as)
-    # print([len(i[0]) for i in nots])
-    finder = sorted(nots, key=lambda x: len(x[0]))
-    mol_lengths = [len(i[0]) for i in finder]
-    num_mols = len(finder)
-    connecters = []
-    for i in range(num_mols - 1):
-        cur_atoms = set(finder[i][0].keys())
-        meta_dists = []
-        distances = []
-        for k in cur_atoms:
-            for key, ik in ass.items():
-                distances.append((np.linalg.norm(ass[k].position()-ik.position()), key, k))
-        connecteds = sorted(distances)
-        fuller = {j: 0 for j in range(num_mols) if j != i}
-        for j in connecteds[mol_lengths[i]::]:
-            if div_atoms[j[1]] != i and div_atoms[j[1]] != div_atoms[j[2]] and fuller[div_atoms[j[1]]] < 2:
-                connecters.append((j[2], j[1]))
-                fuller[div_atoms[j[1]]] += 1
-    print(connecters)
-    zero_bonds = {}
-    for ix, i in enumerate(connecters):
-        c1, c2 = sorted(i)
-        p1 = ass[i[0]].position()
-        p2 = ass[i[1]].position()
-        zero_bonds.update({ix: Bond(c1, c2, '0', length=np.linalg.norm(p1-p2), sections=[find_section(p1, p2), find_section(p2, p1)])})
-
-                # print(ass[k])
-        # print(finder[0][0].keys())
-        # finder_c = list(filter(lambda x: set(x[0].keys()).intersection(cur_atoms) == {}, finder))
-        # print(finder_c)
-
-        # find_two_nearest_atoms
-        # for j in cur_atoms.keys():
-        #     finder_c.pop(j)
-        # print(cur_atoms)
 
 
 
