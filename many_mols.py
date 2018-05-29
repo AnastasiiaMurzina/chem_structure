@@ -120,10 +120,11 @@ def unpack_with_zero_bonds(atoms_not, bonds_not, zero_bonds):
                 for k, i in ds.items():
                     dim_structure.update({k: i+mover_vector})
         else:
+            positions = []
             for i, sec in zero_bonds[key]:
                 positions.append(pp[sec] * i[0] + dim_structure[i[1]])
             av_p = np.array([(positions[0][i] + positions[1][i]) / 2 for i in range(3)])
-            dim_structure.update({atoms_not[key]: av_p - ds[ix_mover]})
+            dim_structure.update({atoms_not[key]: av_p})
     return dim_structure
 
 
