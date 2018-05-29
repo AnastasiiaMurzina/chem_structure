@@ -191,7 +191,7 @@ def to_one_way_bonds(two_way_bonds):
 
 def to_two_ways_bond(one_way_bonds, with_attr=False):
     two_ways = {}
-    print(sorted(one_way_bonds))
+    # print(sorted(one_way_bonds))
     if with_attr:
         for i in one_way_bonds:
             if two_ways.get(i[0]):

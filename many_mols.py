@@ -1,7 +1,7 @@
 import numpy as np
 import copy
 from mol2_worker import xyz_names_bonds
-from mol2_chain import mol2_to_notation, to_two_ways_bond2, dimensional_structure, bonds_of_paired
+from mol2_chain import mol2_to_notation, to_two_ways_bond2, dimensional_structure, bonds_of_paired, to_two_ways_bond
 from penta_with_rotate import find_section, rotate_by_basis, rotate_non_perpendicular, n_z, n_y, rotate_ten_vars, pp
 
 
@@ -22,6 +22,13 @@ def molecular_divider(atoms, bonds):
         ligs_atoms.update({ix: lig_as})
         ligs_bonds.update({ix: lig_bs})
     return div_atoms, ligs_atoms, ligs_bonds
+
+def large_order(not_atoms):
+    '''
+    :param not_atoms:
+    :return: [(count_of_atoms, num_of_mol),]
+    '''
+    return sorted([(len(i) if not isinstance(i, int) else 1, k) for k, i in not_atoms.items()])
 
 
 def get_notation_many_mols(atoms, bonds):
@@ -54,7 +61,7 @@ def places_for_zero_bonds(atoms, bonds):
     '''
     not_atoms, not_bonds = get_notation_many_mols(atoms, bonds)
     # div_atoms, _, _ = molecular_divider(atoms, bonds)
-    finder_zeros = sorted([(len(i) if not isinstance(i, int) else 1, k) for k, i in not_atoms.items()])
+    finder_zeros = large_order(not_atoms)
     nearests = {}
     for n_j, j in enumerate(finder_zeros[:-1:]):
         dss = []
@@ -75,7 +82,6 @@ def places_for_zero_bonds(atoms, bonds):
                             ds = np.linalg.norm(atoms[comp_atom].position() - cur_pos)
                             dss.append([ds, comp_atom, checked])
         nearests.update({j[1]: sorted(dss)[:2]})
-    print(nearests)
     return nearests
 
 
@@ -95,15 +101,59 @@ def zero_connecter(atoms, to_zero_bonds):
 
 
 def unpack_with_zero_bonds(atoms_not, bonds_not, zero_bonds):
-    for key, item in atoms_not.items():
+    the_largest_flag = True
+    for _, key in reversed(large_order(atoms_not)):
         if bonds_not[key] != []:
-            ds = dimensional_structure([item, bonds_of_paired(bonds_not[key])])
-            if zero_bonds.get(key):
-                print(key, zero_bonds[key])
-        # print(item)
-        # print(bonds_not[key])
-    dim_structure = []
+            ds = dimensional_structure([atoms_not[key], bonds_of_paired(bonds_not[key])])
+            if the_largest_flag:
+                the_largest_flag = False
+                # dim_structure = {key: ds}
+                dim_structure = ds
+            else: # if it isn't the largest one
+                # HERE: check one-atom dependence
+                positions = []
+                ix_mover = zero_bonds[key][0][0][2]
+                for i, sec in zero_bonds[key]:
+                    positions.append(pp[sec] * i[0] + dim_structure[i[1]])
+                av_p = np.array([(positions[0][i]+positions[1][i])/2 for i in range(3)])
+                mover_vector = av_p - ds[ix_mover]
+                for k, i in ds.items():
+                    dim_structure.update({k: i+mover_vector})
+        else:
+            for i, sec in zero_bonds[key]:
+                positions.append(pp[sec] * i[0] + dim_structure[i[1]])
+            av_p = np.array([(positions[0][i] + positions[1][i]) / 2 for i in range(3)])
+            dim_structure.update({atoms_not[key]: av_p - ds[ix_mover]})
     return dim_structure
+
+
+
+def write_mol2_file(file_name, atoms, positions, bonds):
+    '''
+    :param file_name:
+    :param names: chemical elements names
+    :param positions: xyz - coordinates
+    :param bonds: one way bonds
+    :return: None, void write function
+    '''
+    with open(file_name, 'w') as f1:
+        f1.write('@<TRIPOS>MOLECULE\n')
+        f1.write('some info\n')
+        f1.write(str(len(atoms))+'\t'+str(len(bonds))+'\n\n')
+        f1.write('@<TRIPOS>ATOM\n')
+        for num, key in atoms.items():
+            f1.write("\t{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\n".format(num, key.name, str(positions[num][0]),
+                                                                            str(positions[num][1]), str(positions[num][2]),
+                                                                            key.name_i, key.i1, key.i2, key.i3))
+        f1.write('@<TRIPOS>BOND\n')
+        for k, num in enumerate(bonds.items()):
+            num, i = num
+            # f1.write("\t{0}\t{1}\t{2}\t{3}\n".format(str(k + 1), str(num[0]), str(num[1]), str(i[1])))
+            for ix in i:
+                if num < ix[0]:
+            # print(i, 't',attrs.get(tuple([i[0], i[1]])), attrs.get(tuple([i[1], i[0]])))
+                    f1.write("\t{0}\t{1}\t{2}\t{3}\n".format(str(k+1), str(num), str(ix[0]), str(ix[1])))
+
 
 
 if __name__ == '__main__':
@@ -111,13 +161,15 @@ if __name__ == '__main__':
     bs, ass = xyz_names_bonds(name + '.mol2')
     div_atoms, ligs_as, lig_bonds = molecular_divider(ass, bs)
     atoms_notation, bonds_notation = get_notation_many_mols(ass, bs)
-    # print(atoms_notation)
-    # print('boonds')
-    # print(bonds_notation)
+
     needs_to_zero_discribe = places_for_zero_bonds(ass, bs)
-    # print(needs_to_zero_discribe)
-    zero_bonds=zero_connecter(ass, needs_to_zero_discribe)
-    unpack_with_zero_bonds(atoms_notation, bonds_notation, zero_bonds)
+
+    zero_bonds = zero_connecter(ass, needs_to_zero_discribe)
+    coords = unpack_with_zero_bonds(atoms_notation, bonds_notation, zero_bonds)
+
+    write_mol2_file('long.mol2', ass, coords, to_two_ways_bond(bs, with_attr=True))
+
+    # print(unpack_with_zero_bonds(atoms_notation, bonds_notation, zero_bonds))
     # mol_with_length = sorted([(len(i) if not isinstance(i, int) else 1, k) for k, i in atoms_notation.items()])
 
     # for i in mol_with_length[:-1:]:
