@@ -1,3 +1,11 @@
+sim*
+out*
+shaep
+
+My*
+*.pyc
+venv/
 *.iml
 *.xml
 __pycache__/
+emulator.py
