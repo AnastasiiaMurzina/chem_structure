@@ -10,7 +10,7 @@ from mpl_toolkits.mplot3d import axes3d
 from mol2_chain import atoms_and_bonds, xyz_names_bonds, bonds_of_paired, write_mol2_file
 import matplotlib.pyplot as plt
 from matplotlib import cm
-pp = get_penta_points([0,0,0])
+pp = get_penta_points([0, 0, 0])
 
 
 def rotate_ten_vars(point, i1, left=-1, right=1):

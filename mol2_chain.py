@@ -114,8 +114,8 @@ def dimensional_structure(notation, n_y=None, n_z=None, fr=None, sr=None, method
         cur_key, bonds, basis = p.pop(0)
         for i in bonds:  # build bonds for cur_key atom
             if not (i[0] in dim_structure):  # if we don't have position:
-                if method=='first':
-                    if n_y!=None and n_z!=None:
+                if method == 'first':
+                    if n_y != None and n_z != None:
                         coord = rotate_by_basis(pp[i[1]], basis[0], basis[1], n_y=n_y, n_z=n_z)*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
                                                                                                  else lengths[(i[0], cur_key)][0]) \
                                 + dim_structure[cur_key]
