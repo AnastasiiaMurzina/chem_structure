@@ -139,7 +139,7 @@ def write_mol2_file(file_name, atoms, positions, bonds):
     with open(file_name, 'w') as f1:
         f1.write('@<TRIPOS>MOLECULE\n')
         f1.write('some info\n')
-        f1.write(str(len(atoms))+'\t'+str(len(bonds))+'\n\n')
+        f1.write(str(len(atoms))+'\t'+str(len(bonds)-1)+'\n\n')
         f1.write('@<TRIPOS>ATOM\n')
         for num, key in atoms.items():
             f1.write("\t{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\n".format(num, key.name, str(positions[num][0]),
@@ -148,12 +148,9 @@ def write_mol2_file(file_name, atoms, positions, bonds):
         f1.write('@<TRIPOS>BOND\n')
         for k, num in enumerate(bonds.items()):
             num, i = num
-            # f1.write("\t{0}\t{1}\t{2}\t{3}\n".format(str(k + 1), str(num[0]), str(num[1]), str(i[1])))
             for ix in i:
                 if num < ix[0]:
-            # print(i, 't',attrs.get(tuple([i[0], i[1]])), attrs.get(tuple([i[1], i[0]])))
                     f1.write("\t{0}\t{1}\t{2}\t{3}\n".format(str(k+1), str(num), str(ix[0]), str(ix[1])))
-
 
 
 if __name__ == '__main__':

@@ -79,9 +79,10 @@ def xyz_names_bonds(file_name):
     atoms, xyz, bonds = {}, {}, {}
     ns = check_mol2_line(file_name)
     for i in range(len(positions) // ns):
-        atom = Atom(positions[ns * i + 1], positions[ns*i + 2],
+        # print(positions[ns*i + 5])
+        atom = Atom(positions[ns * i + 1], positions[ns*i + 5],
                     positions[ns*i + 6], positions[ns*i + 7],
-                    float(positions[ns*i +8]))
+                    float(positions[ns*i + 8]))
         atom.set_xyz(float(positions[ns * i + 2]), float(positions[ns * i + 3]), float(positions[ns * i + 4]))
         atoms.update({i+1: atom})
         # xyz.update({int(positions[ns * i]): np.array([float(positions[ns * i + 2]),
