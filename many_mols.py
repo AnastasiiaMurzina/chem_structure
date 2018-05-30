@@ -99,34 +99,28 @@ def zero_connecter(atoms, to_zero_bonds):
     return zero_bonds
 
 
-
 def unpack_with_zero_bonds(atoms_not, bonds_not, zero_bonds):
     the_largest_flag = True
+    def av():
+        positions, avs = np.zeros(3), np.zeros(3)
+        for i, sec in zero_bonds[key]:
+            positions += (pp[sec] * i[0] + dim_structure[i[1]])
+            fl = ds.get(i[2])
+            avs += np.zeros(3) if fl is None else fl
+        return positions/2-avs/2
     for _, key in reversed(large_order(atoms_not)):
         if bonds_not[key] != []:
             ds = dimensional_structure([atoms_not[key], bonds_of_paired(bonds_not[key])])
             if the_largest_flag:
                 the_largest_flag = False
-                # dim_structure = {key: ds}
                 dim_structure = ds
             else: # if it isn't the largest one
-                # HERE: check one-atom dependence
-                positions = []
-                ix_mover = zero_bonds[key][0][0][2]
-                for i, sec in zero_bonds[key]:
-                    positions.append(pp[sec] * i[0] + dim_structure[i[1]])
-                av_p = np.array([(positions[0][i]+positions[1][i])/2 for i in range(3)])
-                mover_vector = av_p - ds[ix_mover]
+                mover_vector = av()
                 for k, i in ds.items():
                     dim_structure.update({k: i+mover_vector})
         else:
-            positions = []
-            for i, sec in zero_bonds[key]:
-                positions.append(pp[sec] * i[0] + dim_structure[i[1]])
-            av_p = np.array([(positions[0][i] + positions[1][i]) / 2 for i in range(3)])
-            dim_structure.update({atoms_not[key]: av_p})
+            dim_structure.update({atoms_not[key]: av()})
     return dim_structure
-
 
 
 def write_mol2_file(file_name, atoms, positions, bonds):
@@ -163,7 +157,7 @@ if __name__ == '__main__':
     needs_to_zero_discribe = places_for_zero_bonds(ass, bs)
 
     zero_bonds = zero_connecter(ass, needs_to_zero_discribe)
-    coords = unpack_with_zero_bonds(atoms_notation, bonds_notation, zero_bonds)
+    coords = unpack_with_zero_bonds2(atoms_notation, bonds_notation, zero_bonds)
 
     write_mol2_file('long.mol2', ass, coords, to_two_ways_bond(bs, with_attr=True))
 
