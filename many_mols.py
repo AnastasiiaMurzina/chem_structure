@@ -157,7 +157,7 @@ if __name__ == '__main__':
     needs_to_zero_discribe = places_for_zero_bonds(ass, bs)
 
     zero_bonds = zero_connecter(ass, needs_to_zero_discribe)
-    coords = unpack_with_zero_bonds2(atoms_notation, bonds_notation, zero_bonds)
+    coords = unpack_with_zero_bonds(atoms_notation, bonds_notation, zero_bonds)
 
     write_mol2_file('long.mol2', ass, coords, to_two_ways_bond(bs, with_attr=True))
 
