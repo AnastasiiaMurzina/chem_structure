@@ -223,17 +223,17 @@ if __name__ == '__main__':
     xyz_names_bonds()- function
     '''
 
-    name = 'vacuum_cation_singlet_Fe_full'
-    bs, ass = xyz_names_bonds(name + '.mol2')
-    # atoms_info = atoms_and_bonds(name + '.mol2')
+    name = 'Rot_aniline'
+    # bs, ass = xyz_names_bonds(name + '.mol2')
+    atoms_info = atoms_and_bonds(name + '.mol2')
     # print(atoms_info)
 
 
 
     # write_mol2_file("My_one_atom.mol2", lig_as, dd, bonds=bonds_of_paired(ln[1]))
     # (xyz_names_bonds(name + '.mol2'))
-    # ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'))
+    ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'))
     # print(ln)
-    # paired = bonds_of_paired(ln[1])
-    # dim_structure = dimensional_structure([ln[0], paired])
-    # write_mol2_file('My_'+name+'.mol2', atoms_info, dim_structure, bonds=paired)
+    paired = bonds_of_paired(ln[1])
+    dim_structure = dimensional_structure([ln[0], paired])
+    write_mol2_file('My_'+name+'.mol2', atoms_info, dim_structure, bonds=paired)
