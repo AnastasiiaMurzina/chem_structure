@@ -41,7 +41,7 @@ write_mol2_file('new_file_name.mol2', ass, coords, to_two_ways_bond(bs, with_att
 ```
 ### Align
 
-Using shaep $ ```shaep -q original.mol2 after_restore.mol2 output_difference_file```
+Using shaep $ ```shaep -q original.mol2 after_restore.mol2 output_difference_file --transformDistance=1.9```
 Or:
 ```
 import sys, os, subprocess, shutil, tempfile
@@ -52,7 +52,7 @@ compared_molecule2 = os.path.join(d, name + '.mol2')
 compared_molecule = os.path.join(d, 'long.mol2')
 
 sim_file = os.path.join(tmpdir, 'sim.txt')
-subprocess.call([os.path.join(d, "shaep"), "-q", compared_molecule2, compared_molecule, sim_file],
+subprocess.call([os.path.join(d, "shaep"), "-q", compared_molecule2, compared_molecule, sim_file, '--transformDistance=1.9'],
                     stdout=subprocess.DEVNULL)
 with open(sim_file, 'r') as f:
     f.readline()
