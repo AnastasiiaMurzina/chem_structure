@@ -46,7 +46,7 @@ if __name__ == '__main__':
                 dim_structure = dimensional_structure([ln[0], paired], n_y=i, n_z=j, method=mth)
                 compared_molecule2 = os.path.join(d, 'My_{}.mol2'.format(molecule))
                 write_mol2_file(compared_molecule2, atoms_info, dim_structure, bonds=paired)
-                subprocess.call([os.path.join(d, "shaep"),"--transformDistance=1.9", "-q", compared_molecule, compared_molecule2, sim_file, ' --transformDistance=1.9'],
+                subprocess.call([os.path.join(d, "shaep"), "--transformDistance=1.9", "-q", compared_molecule, compared_molecule2, sim_file, ' --transformDistance=1.9'],
                                 stdout=subprocess.DEVNULL)
                 with open(sim_file, 'r') as f:
                     f.readline()
@@ -67,7 +67,7 @@ if __name__ == '__main__':
         dim_structure = dimensional_structure([ln[0], paired], method=mth)
         compared_molecule2 = os.path.join(d, 'My_{}.mol2'.format(molecule))
         write_mol2_file(compared_molecule2, atoms_info, dim_structure, bonds=paired)
-        subprocess.call([os.path.join(d, "shaep"), "-q", compared_molecule, compared_molecule2, sim_file, ' --transformDistance=1.9'],
+        subprocess.call([os.path.join(d, "shaep"), "--transformDistance=1.9","-q", compared_molecule, compared_molecule2, sim_file, ' --transformDistance=1.9'],
                         stdout=subprocess.DEVNULL)
         with open(sim_file, 'r') as f:
             f.readline()
