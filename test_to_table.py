@@ -6,14 +6,14 @@ from mol2_chain import atoms_and_bonds, mol2_to_notation, xyz_names_bonds, bonds
 
 
 if __name__ == '__main__':
-    # molecules = 'Aniline', 'Caffein',  'Ethanol', 'Naphthalene', 'Water'#, 'solution_neural_Ru_eaxial'#, 'vacuum_cation_singlet_Fe_full', 'Water'
-    molecules = 'solution_neural_Ru_eaxial', #, 'vacuum_cation_singlet_Fe_full'
+    molecules = 'Aniline', 'Caffein',  'Ethanol', 'Naphthalene', 'Water'#, 'solution_neural_Ru_eaxial'#, 'vacuum_cation_singlet_Fe_full', 'Water'
+    # molecules = 'solution_neural_Ru_eaxial', #, 'vacuum_cation_singlet_Fe_full'
     errors = {}
+    tmpdir = tempfile.mkdtemp()
     for molecule in molecules:
         mth = 'first'
-        tmpdir = tempfile.mkdtemp()
         error = []
-        for i, j in product(range(1, 10), repeat=2):
+        for i, j in product(range(4, 7), repeat=2):
             sim_file1 = os.path.join(tmpdir, "sim_f_" + str(i) + str(j) + '.txt')
             d = os.getcwd()
             compared_molecule = os.path.join(d, molecule + '.mol2')
@@ -23,7 +23,7 @@ if __name__ == '__main__':
             dim_structure = dimensional_structure([ln[0], paired], n_y=i, n_z=j, method=mth)
             compared_molecule2 = os.path.join(d, 'My_{}.mol2'.format(molecule))
             write_mol2_file(compared_molecule2, atoms_info, dim_structure, bonds=paired)
-            subprocess.call([os.path.join(d, "shaep"), "-q", compared_molecule, compared_molecule2, sim_file1],
+            subprocess.call([os.path.join(d, "shaep"), "--transformDistance=1.9",  "-q", compared_molecule, compared_molecule2, sim_file1],
                             stdout=subprocess.DEVNULL)
             with open(sim_file1, 'r') as f:
                 f.readline()
@@ -34,8 +34,8 @@ if __name__ == '__main__':
         # ('\n incline method: \n')
         mth = 'incline'
         error = []
-        for fr, sr in product([1, 2], range(6, 11)):
-            for i, j in product(range(1, 10), repeat=2):
+        for fr, sr in product([1, 2], range(6, 9)):
+            for i, j in product(range(4, 5), repeat=2):
                 tmpdir = tempfile.mkdtemp()
                 sim_file = os.path.join(tmpdir, "sim_" + str(i) + str(j) + '.txt')
                 d = os.getcwd()
@@ -46,7 +46,7 @@ if __name__ == '__main__':
                 dim_structure = dimensional_structure([ln[0], paired], n_y=i, n_z=j, method=mth)
                 compared_molecule2 = os.path.join(d, 'My_{}.mol2'.format(molecule))
                 write_mol2_file(compared_molecule2, atoms_info, dim_structure, bonds=paired)
-                subprocess.call([os.path.join(d, "shaep"), "-q", compared_molecule, compared_molecule2, sim_file],
+                subprocess.call([os.path.join(d, "shaep"),"--transformDistance=1.9", "-q", compared_molecule, compared_molecule2, sim_file, ' --transformDistance=1.9'],
                                 stdout=subprocess.DEVNULL)
                 with open(sim_file, 'r') as f:
                     f.readline()
@@ -67,7 +67,7 @@ if __name__ == '__main__':
         dim_structure = dimensional_structure([ln[0], paired], method=mth)
         compared_molecule2 = os.path.join(d, 'My_{}.mol2'.format(molecule))
         write_mol2_file(compared_molecule2, atoms_info, dim_structure, bonds=paired)
-        subprocess.call([os.path.join(d, "shaep"), "-q", compared_molecule, compared_molecule2, sim_file],
+        subprocess.call([os.path.join(d, "shaep"), "-q", compared_molecule, compared_molecule2, sim_file, ' --transformDistance=1.9'],
                         stdout=subprocess.DEVNULL)
         with open(sim_file, 'r') as f:
             f.readline()

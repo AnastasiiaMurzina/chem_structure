@@ -65,7 +65,7 @@ def to_two_ways_bond2(one_way_bonds, with_attr=False):
     return two_ways
 
 
-def mol2_to_notation(info_from_file, n_y=4, n_z=4, method='first', fr=None, sr=None):
+def mol2_to_notation(info_from_file, method='ten',n_y=None, n_z=None, fr=None, sr=None):
     '''
     :param info_from_file: read_from_file tuple
     WARNING: may be keep Atoms without coordinates and Bonds with sections
