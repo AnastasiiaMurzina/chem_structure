@@ -1,15 +1,12 @@
-from penta_with_rotate import get_penta_points, find_section, find_section_and_rotate,\
-    show_points, rotate_by_basis, show_named_points, get_reversed_section_and_basis, \
-    show_named_points1, find_basis, find_basis_mave
+from penta_with_rotate import get_penta_points, find_section, find_section,\
+    show_points, rotate_by_basis, show_named_points, find_basis,\
+    get_reversed_section_and_basis
+
 from mol2_worker import xyz_names, atoms_and_bonds
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import copy
-from string import digits
 
-# fig = plt.figure()
-# ax = fig.add_subplot(111, projection='3d')
 count_bonds = {'H': 1, 'C': 4, 'O': 2}
 eps_length = 0.001
 pp = get_penta_points()
@@ -30,7 +27,7 @@ def dimensional_structure(chain_v):
         cur_key, bonds, basis = p.pop(0)
         for i in bonds: # build bonds for cur_key atom
             if i[0] in dim_structure: # if we already have position: we'll check
-                section, b0, b1 = find_section_and_rotate(dim_structure[cur_key][0], dim_structure[i[0]][0])
+                section, b0, b1 = find_basis(dim_structure[cur_key][0], dim_structure[i[0]][0])
                 ix = [j for j in chain_v[cur_key][0] if j[0]==i[0]][0]
                 if (ix[1], chain_v[cur_key][1][0], chain_v[cur_key][1][1]) != (section, b0, b1):
                     print('Invalid structure, cause {0} is not {1} for atom {2}'.format(str(ix[1]),
@@ -38,7 +35,7 @@ def dimensional_structure(chain_v):
                     return
             else: #if it's new bond
                 coord = rotate_by_basis(pp[i[1]], dim_structure[cur_key][1][0], dim_structure[cur_key][1][1])+dim_structure[cur_key][0]
-                section, angle0, angle1 = find_section_and_rotate(dim_structure[cur_key][0], coord)
+                section, angle0, angle1 = find_basis(dim_structure[cur_key][0], coord)
                 dim_structure.update({i[0]: [coord, [angle0, angle1]]})
                 poper = chain_copy.pop(i[0])
                 poper.insert(0, i[0])
@@ -74,11 +71,11 @@ def coordinates_to_notation(info_from_file, valid_length=eps_length, save_length
         for i in connected:
             if key == 1:
                 # sections.append((find_section(cur_p, positions[i]), 0, 0))
-                sections.append((find_section_and_rotate(cur_p, positions[i]), 0, 0))
+                sections.append((find_basis(cur_p, positions[i]), 0, 0))
             else:
-                s, b0, b1 = find_section_and_rotate(cur_p, positions[i])[::]
+                s, b0, b1 = find_basis(cur_p, positions[i])[::]
                 basis = np.array([b0, b1])
-                sections.append(find_section_and_rotate(cur_p, positions[i]))
+                sections.append(find_basis(cur_p, positions[i]))
         app = []
         for inx in range(len(connected)):
             app.append([connected[inx], sections[inx][0]])
@@ -115,7 +112,7 @@ def dimensional_structure_from_efa_notation(notation):
         for i in bonds:  # build bonds for cur_key atom
             if i[0] in dim_structure:  # if we already have position: we'll check
                 if isinstance(bonds_l[i[0]][1][0], (float, int)):
-                    section, b0, b1 = find_section_and_rotate(bonds_l[cur_key][0], bonds_l[i[0]][0])
+                    section, b0, b1 = find_basis(bonds_l[cur_key][0], bonds_l[i[0]][0])
                     ix = [j for j in bonds_l[cur_key][0] if j[0] == i[0]][0]
                     if (ix[1], bonds_l[cur_key][1][0], bonds_l[cur_key][1][1]) != (section, b0, b1):
                         print('Invalid structure, cause {0} is not {1} for atom {2}'.format(str(ix[1]),
@@ -125,12 +122,12 @@ def dimensional_structure_from_efa_notation(notation):
                 if isinstance(i[1], (float, int)):
                     coord = rotate_by_basis(pp[i[1]], dim_structure[cur_key][1][0], dim_structure[cur_key][1][1]) + \
                         dim_structure[cur_key][0]
-                    section, angle0, angle1 = find_section_and_rotate(dim_structure[cur_key][0], coord)
+                    section, angle0, angle1 = find_basis(dim_structure[cur_key][0], coord)
                     dim_structure.update({i[0]: [coord, [angle0, angle1]]})
                 else:
                     coord = rotate_by_basis(pp[i[1][0]], i[1][1], i[1][2]) + \
                             dim_structure[cur_key][0]
-                    section, angle0, angle1 = find_section_and_rotate(dim_structure[cur_key][0], coord)
+                    section, angle0, angle1 = find_basis(dim_structure[cur_key][0], coord)
                     dim_structure.update({i[0]: [coord, [angle0, angle1]]})
                 poper = bonds_copy.pop(i[0])
                 poper.insert(0, i[0])
@@ -156,7 +153,7 @@ def dimensional_from_lefa_notation(notation):
         for i in bonds:  # build bonds for cur_key atom
             if i[0] in dim_structure:  # if we already have position: we'll check
                 if isinstance(bonds_l[i[0]][1][0], (float, int)):
-                    section, b0, b1 = find_section_and_rotate(bonds_l[cur_key][0], bonds_l[i[0]][0])
+                    section, b0, b1 = find_basis(bonds_l[cur_key][0], bonds_l[i[0]][0])
                     ix = [j for j in bonds_l[cur_key][0] if j[0] == i[0]][0]
                     if (ix[1], bonds_l[cur_key][1][0], bonds_l[cur_key][1][1]) != (section, b0, b1):
                         print('Invalid structure, cause {0} is not {1} for atom {2}'.format(str(ix[1]),
@@ -166,12 +163,12 @@ def dimensional_from_lefa_notation(notation):
                 if isinstance(i[1], (float, int)):
                     coord = rotate_by_basis(pp[i[1]], dim_structure[cur_key][1][0], dim_structure[cur_key][1][1])*lengths[(cur_key, i[0])] + \
                         dim_structure[cur_key][0]
-                    section, angle0, angle1 = find_section_and_rotate(dim_structure[cur_key][0], coord)
+                    section, angle0, angle1 = find_basis(dim_structure[cur_key][0], coord)
                     dim_structure.update({i[0]: [coord, [angle0, angle1]]})
                 else:
                     coord = rotate_by_basis(pp[i[1][0]], i[1][1], i[1][2])*lengths[(cur_key, i[0])] + \
                             dim_structure[cur_key][0]
-                    section, angle0, angle1 = find_section_and_rotate(dim_structure[cur_key][0], coord)
+                    section, angle0, angle1 = find_basis(dim_structure[cur_key][0], coord)
                     dim_structure.update({i[0]: [coord, [angle0, angle1]]})
                 poper = bonds_copy.pop(i[0])
                 poper.insert(0, i[0])
@@ -224,26 +221,26 @@ def coordinates_to_mm_basis_notation(info_from_file, valid_length=eps_length, sa
     return notation, names
 
 
-def coordinates_to_min_mean_basis_notation(info_from_file, valid_length=eps_length, save_length=False):
-    '''
-    Unique basis for one node by minimum of average distances
-    :param info_from_file: read_from_file tuple
-    :return: chain in dictionary notation (see above)
-    '''
-    positions, names = info_from_file
-    positions_copy = copy.deepcopy(positions)
-    notation = {}
-    for key, item in positions.items():
-        cur_p = positions_copy.pop(key)
-        connected = [k for k, ite in positions.items() if abs(np.linalg.norm(ite - cur_p) - 1) < valid_length]
-        sections = []
-        basis = find_basis_mave(cur_p, connected)
-        for i in connected:
-            sections.append([i, find_section(cur_p, positions[i], basis0=basis, all_posibility=True)])
-        notation.update({key: [sections, basis]})
-    if save_length:
-        return notation, names, saver_l(info_from_file, notation)
-    return notation, names
+# def coordinates_to_min_mean_basis_notation(info_from_file, valid_length=eps_length, save_length=False):
+#     '''
+#     Unique basis for one node by minimum of average distances
+#     :param info_from_file: read_from_file tuple
+#     :return: chain in dictionary notation (see above)
+#     '''
+#     positions, names = info_from_file
+#     positions_copy = copy.deepcopy(positions)
+#     notation = {}
+#     for key, item in positions.items():
+#         cur_p = positions_copy.pop(key)
+#         connected = [k for k, ite in positions.items() if abs(np.linalg.norm(ite - cur_p) - 1) < valid_length]
+#         sections = []
+#         basis = find_basis_mave(cur_p, connected)
+#         for i in connected:
+#             sections.append([i, find_section(cur_p, positions[i], basis0=basis, all_posibility=True)])
+#         notation.update({key: [sections, basis]})
+#     if save_length:
+#         return notation, names, saver_l(info_from_file, notation)
+#     return notation, names
 
 
 def mol2_coordinates_to_notation(info_from_file, save_length=False):
@@ -454,11 +451,13 @@ if __name__ == '__main__':
     ################mol2_files##############
 
     # ln = coordinates_to_mm_basis_notation(xyz_names('Caffein.xyz'), valid_length=0.7, save_length=True)
+    # ln = coordinates_to_mm_basis_notation(xyz_names('Ethanol.xyz'), valid_length=0.7, save_length=True)
     # ln = coordinates_to_mm_basis_notation(read_xyz_file('Caffein.xyz'), valid_length=0.7, save_length=True)
+    ln = coordinates_to_mm_basis_notation(read_xyz_file('Ethanol.xyz'), valid_length=0.7, save_length=True)
     # ln = coordinates_to_notation(xyz_names('Aniline.mol2'), save_length=True)
 
     # print(to_one_way_bonds(ln[0]))
-    # print(ln)
+    print(ln)
     # d31, nms = dimensional_length_unique_basis(ln)
 
     # one_way_bs = to_one_way_bonds(ln[0])

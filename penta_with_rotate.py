@@ -86,6 +86,7 @@ def get_penta_points(point_center=np.zeros(3)):
 
 pp = get_penta_points()
 ###################################################
+
 def show_points(points):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -167,14 +168,17 @@ def Rz(z_angle):
     return R_z
 
 
-def rotate_by_basis(point, y, z, n_y=n_y, n_z=n_z):
+def rotate_by_basis(point, y, z, **kwargs):
     '''
     :param point: array or one point to rotate
     :param y: first coordinate of rotation
     :param z: second coordinate of rotation
+    :param kwargs: n_y and n_z, default 4
     :return: rotated point or points
     '''
-    operator = Rz(d_hor_angle * z / n_z).dot(Ry(d_ver_angle * y / n_y))
+    n_y_l = kwargs.get('n_y', n_y)
+    n_z_l = kwargs.get('n_z', n_z)
+    operator = Rz(d_hor_angle * z / n_z_l).dot(Ry(d_ver_angle * y / n_y_l))
     if isinstance(point, (np.ndarray)):
         return point.dot(operator)
     return [i.dot(operator) for i in point]
@@ -192,7 +196,19 @@ def rotate_ten_vars(point, i1):
         return point.dot(operator)
     return [i.dot(operator) for i in point]
 
-def rotate_non_perpendicular(point, y, z, n_y=n_y, n_z=n_z, fr=1, sr=6): # fr=1..2; sr=6..10
+def rotate_non_perpendicular(point, y, z, **kwargs): # fr=1..2; sr=6..10
+    '''
+    :param point: array or one point to rotate
+    :param y: first coordinate of rotation
+    :param z: second coordinate of rotation
+    :param kwargs: n_y, n_z, fr, sr - parameters of exist basis
+    :return:
+    '''
+    n_y_l = kwargs.get('n_y', n_y)
+    n_z_l = kwargs.get('n_z', n_z)
+    fr = kwargs.get('fr', 1)
+    sr = kwargs.get('sr', 6)
+
     arounder = pp[fr]-pp[sr]
     W = np.zeros((3, 3))
     W[0, 1] = -arounder[2]
@@ -201,9 +217,9 @@ def rotate_non_perpendicular(point, y, z, n_y=n_y, n_z=n_z, fr=1, sr=6): # fr=1.
     W[1, 2] = - arounder[0]
     W[2, 0] = - arounder[1]
     W[2, 1] = arounder[0]
-    phi = d_ver_angle*y/n_y
+    phi = d_ver_angle*y/n_y_l
     rotated_matrix = np.eye(3)+np.sin(phi)*W+(2*(np.sin(phi/2)**2))*W**2
-    operator = Rz(d_hor_angle * z / n_z).dot(rotated_matrix)
+    operator = Rz(d_hor_angle * z / n_z_l).dot(rotated_matrix)
     if isinstance(point, (np.ndarray)):
         return point.dot(operator)
     return [i.dot(operator) for i in point]
@@ -243,7 +259,7 @@ def check_diff_rotate(n_y, n_z):
     dhs = []
     for i in range(n_y):
         for j in range(n_z):
-            dhs.append(np.array(rotate_by_basis(pp, i, j)))
+            dhs.append(np.array(rotate_by_basis(pp, i, j, kwargs={'n_y': n_y, 'n_z': n_z})))
     diff = 1
     for i0, i in enumerate(dhs):
         for j0, j in enumerate(dhs):
@@ -263,22 +279,20 @@ step_rot = check_diff_rotate(n_y, n_z) * 0.5
 #################Checkers#############
 
 
-def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibility=False, n_y=n_y, n_z=n_z, method='first', fr=None,sr=None):
+def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibility=False, n_y=n_y, n_z=n_z, method='first', **kwargs):
     '''
     :param p0: this point has already basis
     :param p1: not important basis of p1
     :param basis0: basis of p0-center atom
     :return: section of p0 atom in which there's p1
     '''
+
     vec = p1 - p0
     vec = np.array([i/np.linalg.norm(vec) for i in vec])
     if method == 'first':
-        pp_ = rotate_by_basis(pp, basis0[0], basis0[1], n_y=n_y, n_z=n_z)
+        pp_ = rotate_by_basis(pp, basis0[0], basis0[1], kwargs=kwargs)
     elif method == 'incline':
-        if fr == None:
-            pp_ = rotate_non_perpendicular(pp, basis0[0], basis0[1], n_y=n_y, n_z=n_z)
-        else:
-            pp_ = rotate_non_perpendicular(pp, basis0[0], basis0[1], n_y=n_y, n_z=n_z,fr=fr,sr=sr)
+        pp_ = rotate_non_perpendicular(pp, basis0[0], basis0[1], kwargs=kwargs)
     elif method == 'ten':
         pp_ = rotate_ten_vars(pp, basis0)
     if all_posibility:
@@ -290,37 +304,40 @@ def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibil
         let_accurance *= 1.1
 
 
-# def get_reversed_section_and_basis(s, b0):
-#     return find_section_and_rotate(np.zeros(3), rotate_by_basis(pp[s], b0[0], b0[1]))
+def get_reversed_section_and_basis(s, b0, method='first', **kwargs):
+    if method == 'first':
+        return find_basis(np.zeros(3), rotate_by_basis(pp[s], b0[0], b0[1], kwargs=kwargs), kwargs=kwargs)
+    elif method == 'ten':
+        return find_basis(np.zeros(3), rotate_ten_vars(pp[s], b0), kwargs=kwargs)
+    return find_basis(np.zeros(3), rotate_non_perpendicular(pp[s], b0[0], b0[1], kwargs=kwargs), kwargs=kwargs)
 
 
-def find_basis(point, connected, n_y=n_y, n_z=n_z, fr=None, sr=None, method='first'):
+def find_basis(point, connected, method='first', **kwargs):
     '''
     :param point: point for search basis
     :param connected: atoms which have bonds with point
     :return: basis for point (y, z) by min of max different between point and center of section
     '''
     diffs = []
+    n_y_l = kwargs.get('n_y', n_y)
+    n_z_l = kwargs.get('n_z', n_z)
     if method=='first':
-        for j in sorted(product(range(n_y), range(n_z)), key=lambda x: sum(x)):
+        for j in sorted(product(range(n_y_l), range(n_z_l)), key=lambda x: sum(x)):
             diff = []
             for i in connected:
                 v = i - point
                 v /= np.linalg.norm(v)
-                diff.append(min([np.linalg.norm(v - ppx) for ppx in rotate_by_basis(pp, j[0], j[1], n_y=n_y, n_z=n_z)]))
+                diff.append(min([np.linalg.norm(v - ppx) for ppx in rotate_by_basis(pp, j[0], j[1], kwargs=kwargs)]))
             diffs.append([max(diff), j])
         return min(diffs)[1]
     if method == 'incline':
-        for j in sorted(product(range(n_y), range(n_z)), key=lambda x: sum(x)):
+        for j in sorted(product(range(n_y_l), range(n_z_l)), key=lambda x: sum(x)):
             diff = []
             for i in connected:
                 v = i - point
                 v /= np.linalg.norm(v)
-                if fr == None:
-                    diff.append(min([np.linalg.norm(v - ppx) for ppx in rotate_non_perpendicular(pp, j[0], j[1], n_y=n_y, n_z=n_z)]))
-                else:
-                    diff.append(min([np.linalg.norm(v - ppx) for ppx in
-                                     rotate_non_perpendicular(pp, j[0], j[1], n_y=n_y, n_z=n_z, fr=fr,sr=sr)]))
+                diff.append(min([np.linalg.norm(v - ppx) for ppx in
+                                     rotate_non_perpendicular(pp, j[0], j[1], kwargs=kwargs)]))
 
             diffs.append([max(diff), j])
     if method == 'ten':
@@ -356,8 +373,9 @@ if __name__ == '__main__':
     # for i in range(12):
     #     for j in sorted(product((0, 1, 2, 3), repeat=2), key=lambda x: sum(x)):
     #         if i in [0, 6] and j[1] == 0:
-    #             if not ((i)==find_section(np.zeros(3), rotate_by_basis(pp[i], j[0], j[1])), [j[0],j[1]]):
+    #             if not ((i) == find_section(np.zeros(3), rotate_by_basis(pp[i], j[0], j[1])), {'n_y':j[0], 'n_z': j[1]}):
     #                 print(i, j[0], j[1])
+    # print(find_basis(np.zeros(3), rotate_by_basis(pp[i], j[0], j[1])), {'n_y':j[0], 'n_z': j[1]})
 ############################################################################
     # bs = find_basis(np.array([0, 0, 0]), rotate_by_basis(pp[4], 1, 2))
     # print(bs)
