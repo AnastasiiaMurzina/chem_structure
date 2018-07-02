@@ -279,7 +279,7 @@ step_rot = check_diff_rotate(n_y, n_z) * 0.5
 #################Checkers#############
 
 
-def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibility=False, n_y=n_y, n_z=n_z, method='first', **kwargs):
+def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibility=False, method='first', **kwargs):
     '''
     :param p0: this point has already basis
     :param p1: not important basis of p1
@@ -321,7 +321,7 @@ def find_basis(point, connected, method='first', **kwargs):
     diffs = []
     n_y_l = kwargs.get('n_y', n_y)
     n_z_l = kwargs.get('n_z', n_z)
-    if method=='first':
+    if method =='first':
         for j in sorted(product(range(n_y_l), range(n_z_l)), key=lambda x: sum(x)):
             diff = []
             for i in connected:
