@@ -1,8 +1,7 @@
 import numpy as np
 import copy
 from penta_with_rotate import get_penta_points, find_section,\
-    rotate_by_basis, find_basis, rotate_non_perpendicular, rotate_ten_vars
-
+    rotate_by_basis, find_basis, rotate_non_perpendicular, rotate_ten_vars, n_y, n_z
 from mol2_worker import xyz_names, xyz_names_bonds, Atom, atoms_and_bonds, Bond
 # from many_mols import molecular_divider, get_notation_many_mols, insert_zero_bonds
 
@@ -65,7 +64,7 @@ def to_two_ways_bond2(one_way_bonds, with_attr=False):
     return two_ways
 
 
-def mol2_to_notation(info_from_file, n_y=4, n_z=4, method='first', fr=None, sr=None):
+def mol2_to_notation(info_from_file, method='first', **kwargs):
     '''
     :param info_from_file: read_from_file tuple
     WARNING: may be keep Atoms without coordinates and Bonds with sections
@@ -79,17 +78,12 @@ def mol2_to_notation(info_from_file, n_y=4, n_z=4, method='first', fr=None, sr=N
     for key, item in atoms.items():
         cur_p = positions_copy.pop(key).position()
         connected = [i[0] for i in bonds2[key]]
-        if n_y == None or n_z == None:
-            basis = find_basis(cur_p, [atoms[i].position() for i in connected], method=method)
-            # print(basis)
-            notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, method=method)]
+        basis = find_basis(cur_p, [atoms[i].position() for i in connected], method=method, kwargs=kwargs)
+        notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, method=method, kwargs=kwargs)]
                                          for i in connected]), basis]})
-        else:
-            basis = find_basis(cur_p, [atoms[i].position() for i in connected], n_y=n_y, n_z=n_z, method=method, fr=fr,sr=sr)
-            # print(basis)
         atoms[key].set_orientation(basis)
 
-        notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, n_y=n_y, n_z=n_z, method=method, fr=fr, sr=sr)]
+        notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, method=method, kwargs=kwargs)]
                                      for i in connected]), basis]})
     for key, item in bonds.items():
         for i in range(len(item)):
@@ -97,7 +91,7 @@ def mol2_to_notation(info_from_file, n_y=4, n_z=4, method='first', fr=None, sr=N
     return notation, bonds
 
 
-def dimensional_structure(notation, n_y=None, n_z=None, fr=None, sr=None, method='first'):
+def dimensional_structure(notation, method='first', **kwargs):
     '''
     :param notation: Notation with first atom with unique basis for every bond
     with length
@@ -115,34 +109,11 @@ def dimensional_structure(notation, n_y=None, n_z=None, fr=None, sr=None, method
         for i in bonds:  # build bonds for cur_key atom
             if not (i[0] in dim_structure):  # if we don't have position:
                 if method == 'first':
-                    if n_y != None and n_z != None:
-                        coord = rotate_by_basis(pp[i[1]], basis[0], basis[1], n_y=n_y, n_z=n_z)*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
-                                                                                                 else lengths[(i[0], cur_key)][0]) \
-                                + dim_structure[cur_key]
-                    else:
-                        coord = rotate_by_basis(pp[i[1]], basis[0], basis[1])*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
-                                                                           else lengths[(i[0], cur_key)][0])\
-                            + dim_structure[cur_key]
+                    coord = rotate_by_basis(pp[i[1]], basis[0], basis[1], kwargs=kwargs)*(lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
                 elif method == 'incline':
-                    if n_y!=None and n_z!=None:
-                        if fr!=None and sr!=None:
-                            coord = rotate_non_perpendicular(pp[i[1]], basis[0], basis[1], n_y=n_y, n_z=n_z, fr=fr, sr=sr) * (
-                                lengths[(cur_key, i[0])][0] if cur_key < i[0]
-                                else lengths[(i[0], cur_key)][0]) \
-                                    + dim_structure[cur_key]
-                        else:
-                            coord = rotate_non_perpendicular(pp[i[1]], basis[0], basis[1], n_y=n_y, n_z=n_z)*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
-                                                                                                 else lengths[(i[0], cur_key)][0]) \
-                                + dim_structure[cur_key]
-                    else:
-                        coord = rotate_non_perpendicular(pp[i[1]], basis[0], basis[1])*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
-                                                                           else lengths[(i[0], cur_key)][0])\
-                            + dim_structure[cur_key]
+                    coord = rotate_non_perpendicular(pp[i[1]], basis[0], basis[1], kwargs=kwargs) * (lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
                 elif method == 'ten':
-                    coord = rotate_ten_vars(pp[i[1]], basis)*(lengths[(cur_key, i[0])][0] if cur_key < i[0]
-                                                                                                 else lengths[(i[0], cur_key)][0]) \
-                                + dim_structure[cur_key]
-
+                    coord = rotate_ten_vars(pp[i[1]], basis)*(lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
                 dim_structure.update({i[0]: coord})
                 poper = bonds_copy.pop(i[0])
                 poper.insert(0, i[0])
@@ -223,17 +194,17 @@ if __name__ == '__main__':
     xyz_names_bonds()- function
     '''
 
-    name = 'vacuum_cation_singlet_Fe_full'
-    bs, ass = xyz_names_bonds(name + '.mol2')
-    # atoms_info = atoms_and_bonds(name + '.mol2')
+    name = 'Rot_aniline'
+    # bs, ass = xyz_names_bonds(name + '.mol2')
+    atoms_info = atoms_and_bonds(name + '.mol2')
     # print(atoms_info)
 
 
 
     # write_mol2_file("My_one_atom.mol2", lig_as, dd, bonds=bonds_of_paired(ln[1]))
     # (xyz_names_bonds(name + '.mol2'))
-    # ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'))
+    ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'), method='ten')#, kwargs={'n_y': 5, 'n_z': 7})
     # print(ln)
-    # paired = bonds_of_paired(ln[1])
-    # dim_structure = dimensional_structure([ln[0], paired])
-    # write_mol2_file('My_'+name+'.mol2', atoms_info, dim_structure, bonds=paired)
+    paired = bonds_of_paired(ln[1])
+    dim_structure = dimensional_structure([ln[0], paired], method='ten')#,kwargs={'n_y': 5, 'n_z': 7})
+    write_mol2_file('My_'+name+'.mol2', atoms_info, dim_structure, bonds=paired)

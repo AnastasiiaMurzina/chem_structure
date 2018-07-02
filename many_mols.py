@@ -44,7 +44,7 @@ def get_notation_many_mols(atoms, bonds):
         lig_as = ligs_as[i]
         lig_bs = lig_bonds[i]
         if lig_bs != []:
-            ln = mol2_to_notation([lig_bs, lig_as])
+            ln = mol2_to_notation([lig_bs, lig_as], method='incline')
             not_atoms.update({i: ln[0]})
             not_bonds.update({i: ln[1]})
         else:
@@ -99,34 +99,27 @@ def zero_connecter(atoms, to_zero_bonds):
     return zero_bonds
 
 
-
 def unpack_with_zero_bonds(atoms_not, bonds_not, zero_bonds):
     the_largest_flag = True
+    def av():
+        positions, avs = np.zeros(3), np.zeros(3)
+        for i, sec in zero_bonds[key]:
+            positions += (pp[sec] * i[0] + dim_structure[i[1]])
+            avs += ds.get(i[2], np.zeros(3))
+        return positions/2-avs/2
     for _, key in reversed(large_order(atoms_not)):
         if bonds_not[key] != []:
-            ds = dimensional_structure([atoms_not[key], bonds_of_paired(bonds_not[key])])
+            ds = dimensional_structure([atoms_not[key], bonds_of_paired(bonds_not[key])], method='incline')
             if the_largest_flag:
                 the_largest_flag = False
-                # dim_structure = {key: ds}
                 dim_structure = ds
             else: # if it isn't the largest one
-                # HERE: check one-atom dependence
-                positions = []
-                ix_mover = zero_bonds[key][0][0][2]
-                for i, sec in zero_bonds[key]:
-                    positions.append(pp[sec] * i[0] + dim_structure[i[1]])
-                av_p = np.array([(positions[0][i]+positions[1][i])/2 for i in range(3)])
-                mover_vector = av_p - ds[ix_mover]
+                mover_vector = av()
                 for k, i in ds.items():
                     dim_structure.update({k: i+mover_vector})
         else:
-            positions = []
-            for i, sec in zero_bonds[key]:
-                positions.append(pp[sec] * i[0] + dim_structure[i[1]])
-            av_p = np.array([(positions[0][i] + positions[1][i]) / 2 for i in range(3)])
-            dim_structure.update({atoms_not[key]: av_p})
+            dim_structure.update({atoms_not[key]: av()})
     return dim_structure
-
 
 
 def write_mol2_file(file_name, atoms, positions, bonds):
@@ -155,6 +148,7 @@ def write_mol2_file(file_name, atoms, positions, bonds):
 
 
 if __name__ == '__main__':
+
     name = 'vacuum_cation_singlet_Fe_full'
     bs, ass = xyz_names_bonds(name + '.mol2')
     div_atoms, ligs_as, lig_bonds = molecular_divider(ass, bs)
@@ -166,6 +160,24 @@ if __name__ == '__main__':
     coords = unpack_with_zero_bonds(atoms_notation, bonds_notation, zero_bonds)
 
     write_mol2_file('long.mol2', ass, coords, to_two_ways_bond(bs, with_attr=True))
+    ##################################################
+    import sys, os, subprocess, shutil, tempfile
+    d = os.getcwd()
+    tmpdir = tempfile.mkdtemp()
+
+    compared_molecule2 = os.path.join(d, name + '.mol2')
+    compared_molecule = os.path.join(d, 'long.mol2')
+
+    sim_file = os.path.join(tmpdir, 'sim_three.txt')
+    subprocess.call([os.path.join(d, "shaep"), "-q", compared_molecule2, compared_molecule, sim_file],
+                    stdout=subprocess.DEVNULL)
+    with open(sim_file, 'r') as f:
+        f.readline()
+        coeffs = f.readline().split()
+        coeffs = coeffs[2:6] #+ coeffs[8:]
+        # print(coeffs)
+        print(np.linalg.norm(np.array(list(map(float, coeffs)))))
+    shutil.rmtree(tmpdir)
 
     # print(unpack_with_zero_bonds(atoms_notation, bonds_notation, zero_bonds))
     # mol_with_length = sorted([(len(i) if not isinstance(i, int) else 1, k) for k, i in atoms_notation.items()])
