@@ -1,6 +1,10 @@
+from subprocess import call
+import os
 from mol2_worker import *
 from mol2_chain import write_mol2_file
-# from subprocess import call
+
+FNULL = open(os.devnull, 'w')
+
 
 def generateInputFile(opts, mol_file_positions, mol_file_names):
     title = opts['Title']
@@ -54,7 +58,7 @@ def generateInputFile(opts, mol_file_positions, mol_file_names):
     return output
 
 def writeInputFile(opt, positions, names, file_name):
-    with open(mopac_file_name, 'w') as f:
+    with open(file_name, 'w') as f:
         f.write(generateInputFile(opt, positions, names))
 
 def mopacOut_to_xyz(mopac_file, outXYZ_file):
@@ -68,7 +72,7 @@ def mopacOut_to_xyz(mopac_file, outXYZ_file):
         for _ in range(11):
             f.readline()
         energy = float(f.readline().split()[-2])
-    with open(mopac_file_name + '.out', 'r') as f:
+    with open(mopac_file + '.out', 'r') as f:
         for line in f:
             if '                             CARTESIAN COORDINATES' == line[0:50]:
                 break
@@ -85,21 +89,32 @@ def mopacOut_to_xyz(mopac_file, outXYZ_file):
 
 
 if __name__ == '__main__':
-    file_name = 'My_Aniline.mol2'
-    positions = xyz_names(file_name)
-    bonds, names = xyz_names_bonds(file_name)
-    atom_info = atoms_and_bonds(file_name)
-    # print(atom_info)
-    mopac_file_name = 'My_Aniline'
-    options = {'Title': 'Smth info about optimization', 'Calculation Type': 'Equilibrium Geometry',
-                   'Charge': 0, 'Multiplicity': 1, 'Theory': 'PM6'}
-    # print(generateInputFile({'Title': 'Smth info about optimization', 'Calculation Type': 'Equilibrium Geometry',
-    #                'Charge': 0, 'Multiplicity': 1, 'Theory': 'PM6'}, positions, names))
-    writeInputFile(options, positions, names, mopac_file_name+'.mop')
+    ''' Compare optimizations with Cartesian and Z-matrix'''
 
-    energy = mopacOut_to_xyz(mopac_file_name, 'My_Aniline_opt.xyz')
-    print(energy)
-    # call('babel', )
+    # file1 = 'Aniline_cart_av'
+    # file2 = 'Aniline_zmax_av'
+    # energy1 = mopacOut_to_xyz(file1, file1 + '_opt.xyz')
+    # energy2 = mopacOut_to_xyz(file2, file2 + '_opt.xyz')
+    # print(energy1, energy2)
+    # call(['babel', '-ixyz', file1+'_opt.xyz', '-omol', file1 + '_opt.mol'])
+    # call(['babel', '-ixyz', file2+'_opt.xyz', '-omol', file2 + '_opt.mol'])
+    # call(['./shaep', '-q', file1 + '_opt.mol', file2 + '_opt.mol', 'output'])
+
+
+
+    # file_name = 'My_Aniline.mol2'
+    # positions = xyz_names(file_name)
+    # bonds, names = xyz_names_bonds(file_name)
+    # atom_info = atoms_and_bonds(file_name)
+    # mopac_file_name = 'My_Aniline'
+    # options = {'Title': 'Smth info about optimization', 'Calculation Type': 'Equilibrium Geometry',
+    #                'Charge': 0, 'Multiplicity': 1, 'Theory': 'PM6'}
+    # writeInputFile(options, positions, names, mopac_file_name+'.mop')
+    # call(['/opt/mopac/run_script.sh', mopac_file_name + '.mop'],
+    #             stdout=FNULL)
+    # energy = mopacOut_to_xyz(mopac_file_name, 'My_Aniline_opt.xyz')
+    # print(energy)
+    pass
 
 
 
