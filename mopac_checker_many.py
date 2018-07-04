@@ -3,10 +3,10 @@ from many_mols import molecular_divider, get_notation_many_mols, places_for_zero
 from mol2_chain import atoms_and_bonds, mol2_to_notation, xyz_names_bonds, bonds_of_paired, dimensional_structure, xyz_names
 from mopac_worker import writeInputFile, mopacOut_to_xyz
 
-name = 'vacuum_cation_singlet_Fe'
+name = 'solution_neutral_Ru_axial'
 
 FNULL = open(os.devnull, 'w')
-mopac_alias = 'mopac' #'/opt/mopac/run_script.sh'
+mopac_alias = '/opt/mopac/run_script.sh'
 tmpdir = tempfile.mkdtemp()
 initial_xyz = os.path.join(os.curdir, 'mols_dir', name+'.xyz')
 
@@ -48,7 +48,7 @@ reconstructed_mol = os.path.join(tmpdir, 'my_'+name+'.mol')
 write_mol2_file(reconstructed_mol2, ass, coords, to_two_ways_bond(bs, with_attr=True))
 
 reconstructed_mop = os.path.join(tmpdir, 'my_' + name + '.mop')
-reconstructed_mop_name = os.path.join(tmpdir, name)
+reconstructed_mop_name = os.path.join(tmpdir, 'my_' + name)
 writeInputFile(options, positions, names, reconstructed_mop)
 subprocess.call([mopac_alias, reconstructed_mop], stdout=FNULL)
 reconstructed_opt_xyz = os.path.join(tmpdir, 'my_' + name + '_opt.xyz')
@@ -63,11 +63,5 @@ with open(os.path.join(tmpdir, name), 'r') as f:
     for line in f:
         pass
     print(line)
-# subprocess.call(['babel', '-imol2'])
-
-# m2_mol = os.path.join(tmpdir, 'my_'+name+'.mol')
-# subprocess.call(["babel", "-imol2", m2_mol2, '-omol', m2_mol],
-#                 stdout=FNULL)
-# m2_mol_opt = os.path.join(tmpdir, 'my_'+name+'_opt.mol')
 
 shutil.rmtree(tmpdir)

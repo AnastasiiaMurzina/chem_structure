@@ -68,7 +68,7 @@ def mopacOut_to_xyz(mopac_file, outXYZ_file):
             f.readline()
         info = f.readline().split()
         count = int(info[-2])
-        formula = (info[:4])
+        formula = (info[:-3])
         for _ in range(11):
             f.readline()
         energy = float(f.readline().split()[-2])
