@@ -6,7 +6,8 @@ from mopac_worker import writeInputFile, mopacOut_to_xyz
 name = 'solution_neutral_Ru_axial'
 
 FNULL = open(os.devnull, 'w')
-mopac_alias = '/opt/mopac/run_script.sh'
+mopac_alias = 'mopac'
+# mopac_alias = '/opt/mopac/run_script.sh'
 tmpdir = tempfile.mkdtemp()
 initial_xyz = os.path.join(os.curdir, 'mols_dir', name+'.xyz')
 
