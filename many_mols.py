@@ -144,6 +144,7 @@ def write_mol2_file(file_name, atoms, positions, bonds):
             num, i = num
             for ix in i:
                 if num < ix[0]:
+                    print(str(k+1), str(num), str(ix[0]), str(ix[1]))
                     f1.write("\t{0}\t{1}\t{2}\t{3}\n".format(str(k+1), str(num), str(ix[0]), str(ix[1])))
 
 

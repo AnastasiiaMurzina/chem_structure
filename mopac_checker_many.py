@@ -3,11 +3,12 @@ from many_mols import molecular_divider, get_notation_many_mols, places_for_zero
 from mol2_chain import atoms_and_bonds, mol2_to_notation, xyz_names_bonds, bonds_of_paired, dimensional_structure, xyz_names
 from mopac_worker import writeInputFile, mopacOut_to_xyz
 
-name = 'solution_neutral_Ru_axial'
+name = '4b-Mn-OMe-ads-MeCHO'
+
 
 FNULL = open(os.devnull, 'w')
-mopac_alias = 'mopac'
-# mopac_alias = '/opt/mopac/run_script.sh'
+# mopac_alias = 'mopac'
+mopac_alias = '/opt/mopac/run_script.sh'
 tmpdir = tempfile.mkdtemp()
 initial_xyz = os.path.join(os.curdir, 'mols_dir', name+'.xyz')
 

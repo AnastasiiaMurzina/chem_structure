@@ -90,6 +90,9 @@ def mopacOut_to_xyz(mopac_file, outXYZ_file):
 
 if __name__ == '__main__':
     ''' Compare optimizations with Cartesian and Z-matrix'''
+    options = {'Title': 'Smth info about optimization', 'Calculation Type': 'Equilibrium Geometry',
+                              'Charge': 0, 'Multiplicity': 1, 'Theory': 'PM6'}
+    # writeInputFile(options, )
 
     # file1 = 'Aniline_cart_av'
     # file2 = 'Aniline_zmax_av'
@@ -107,8 +110,7 @@ if __name__ == '__main__':
     # bonds, names = xyz_names_bonds(file_name)
     # atom_info = atoms_and_bonds(file_name)
     # mopac_file_name = 'My_Aniline'
-    # options = {'Title': 'Smth info about optimization', 'Calculation Type': 'Equilibrium Geometry',
-    #                'Charge': 0, 'Multiplicity': 1, 'Theory': 'PM6'}
+
     # writeInputFile(options, positions, names, mopac_file_name+'.mop')
     # call(['/opt/mopac/run_script.sh', mopac_file_name + '.mop'],
     #             stdout=FNULL)

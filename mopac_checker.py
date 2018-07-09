@@ -4,16 +4,16 @@ from itertools import product
 from mol2_chain import atoms_and_bonds, mol2_to_notation, xyz_names_bonds, bonds_of_paired, dimensional_structure, write_mol2_file, xyz_names
 from mopac_worker import writeInputFile, mopacOut_to_xyz
 
-name = 'Heroin_2'
+name = 'Mn-deprot-Mn-bare'
 
 FNULL = open(os.devnull, 'w')
-mopac_alias = 'mopac'
-# mopac_alias = '/opt/mopac/run_script.sh'
+# mopac_alias = 'mopac'
+mopac_alias = '/opt/mopac/run_script.sh'
 tmpdir = tempfile.mkdtemp()
 initial_xyz = os.path.join(os.curdir, 'mols_dir', name+'.xyz')
 
 options = {'Title': 'Smth info about optimization', 'Calculation Type': 'Equilibrium Geometry',
-                   'Charge': 0, 'Multiplicity': 1, 'Theory': 'PM3'}
+                   'Charge': 0, 'Multiplicity': 1, 'Theory': 'PM7'}
 original_mol2 = os.path.join(tmpdir, name+'.mol2')
 subprocess.call(['babel', '-ixyz', initial_xyz, '-omol2', original_mol2], stdout=FNULL)
 positions = xyz_names(original_mol2)
