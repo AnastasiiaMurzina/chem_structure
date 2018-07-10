@@ -4,7 +4,12 @@ from mol2_worker import *
 from mol2_chain import write_mol2_file
 
 FNULL = open(os.devnull, 'w')
-
+greece_numericals = {1: 'SINGLET', 2: 'DOUBLET',
+                    3: 'TRIPLET', 4: 'QUARTET', 5: 'QUINTET',
+                     6: 'SEXTET'}
+calculations = {'Single Point': 'NOOPT',
+                'Equilibrium Geometry': '',
+                'Frequencies': 'FORCE'}
 
 def generateInputFile(opts, mol_file_positions, mol_file_names):
     title = opts['Title']
@@ -15,37 +20,14 @@ def generateInputFile(opts, mol_file_positions, mol_file_names):
 
     output = ''
 
-    multStr = ''
-    if multiplicity == 1:
-        multStr = 'SINGLET'
-    elif multiplicity == 2:
-        multStr = 'DOUBLET'
-    elif multiplicity == 3:
-        multStr = 'TRIPLET'
-    elif multiplicity == 4:
-        multStr = 'QUARTET'
-    elif multiplicity == 5:
-        multStr = 'QUINTET'
-    elif multiplicity == 6:
-        multStr = 'SEXTET'
-    else:
-        raise Exception('Unhandled multiplicty: %d' % multiplicity)
+    multStr = greece_numericals.get(multiplicity, 'SINGLET')
 
     # Calculation type:
-    calcStr = ''
-    if calculate == 'Single Point':
-        calcStr = 'NOOPT'
-    elif calculate == 'Equilibrium Geometry':
-        pass
-    elif calculate == 'Frequencies':
-        calcStr = 'FORCE'
-    else:
-        raise Exception('Unhandled calculation type: %s' % calculate)
+    calcStr = calculations[calculate]
 
     # Charge, mult, calc type, theory:
     output += ' AUX LARGE CHARGE=%d %s %s %s\n' %\
         (charge, multStr, calcStr, theory)
-
     output += '%s\n\n' % title
 
     if calculate == 'Single Point':
@@ -62,7 +44,6 @@ def writeInputFile(opt, positions, names, file_name):
         f.write(generateInputFile(opt, positions, names))
 
 def mopacOut_to_xyz(mopac_file, outXYZ_file):
-    coords = []
     with open(mopac_file+'.arc', 'r') as f:
         for _ in range(8):
             f.readline()
@@ -73,12 +54,10 @@ def mopacOut_to_xyz(mopac_file, outXYZ_file):
             f.readline()
         energy = float(f.readline().split()[-2])
     with open(mopac_file + '.out', 'r') as f:
-        for line in f:
-            if '                             CARTESIAN COORDINATES' == line[0:50]:
-                break
-        f.readline()
-        for i in range(count):
-            coords.append(f.readline())
+        next(l for l in f if 'CARTESIAN COORDINATES' in l)
+        for _ in range(3):
+            next(f)
+        coords = [next(f) for _ in range(count)]
     with open(outXYZ_file, 'w') as f1:
         f1.write(str(count)+'\n')
         f1.write(' '.join(formula)+'\n')
