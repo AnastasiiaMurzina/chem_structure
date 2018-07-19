@@ -8,6 +8,17 @@ from mol2_worker import xyz_names, xyz_names_bonds, Atom, atoms_and_bonds, Bond
 eps_length = 0.001
 pp = get_penta_points()
 
+default_lengths = {'H': 1.09, 'C': 1.5, 'O': 1.7,
+                   'Be': 1.93, 'S': 2.0, 'Se': 2.3,
+                   'Mg': 2.07, 'B': 1.56, 'Al': 2.24,
+                   'In': 2.16, 'Si': 1.86, 'Sn': 2.14,
+                   'Pb': 2.3, 'N': 1.7, 'P': 1.87,
+                   'As': 1.98, 'Sb': 2.2, 'Bi': 2.3,
+                   'Cr': 1.92, 'Te': 2.05, 'Mo': 2.08,
+                   'W': 2.06, 'F': 1.34, 'Cl': 1.76,
+                   'Br': 1.93, 'I': 2.13
+                   }
+
 ###########################Builder structure if possile else return fail########################
 def prepare_bonds(bonds):
     for i, j in enumerate(bonds):
@@ -85,19 +96,16 @@ def mol2_to_notation(info_from_file, method='first', **kwargs):
 
         notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, method=method, kwargs=kwargs)]
                                      for i in connected]), basis]})
-    for key, item in bonds.items():
-        for i in range(len(item)):
-            bonds[key][i].insert(1, np.linalg.norm(atoms[key].position()-atoms[item[i][0]].position()))
     return notation, bonds
 
 
-def dimensional_structure(notation, method='first', **kwargs):
+def dimensional_structure(notation, names, method='first', **kwargs):
     '''
     :param notation: Notation with first atom with unique basis for every bond
     with length
     :return: xyz-info
     '''
-    bonds_l, lengths = notation
+    bonds_l, _ = notation
     first_atom = min(bonds_l.keys())
     dim_structure = {first_atom: np.array([0, 0, 0])}#, np.array([0, 0])]}
     p = bonds_l[first_atom]
@@ -108,12 +116,21 @@ def dimensional_structure(notation, method='first', **kwargs):
         cur_key, bonds, basis = p.pop(0)
         for i in bonds:  # build bonds for cur_key atom
             if not (i[0] in dim_structure):  # if we don't have position:
+                l1 = names[cur_key].name
+                l2 = names[i[0]].name
+                if l1 == l2 == 'C':
+                    l = default_lengths['C']
+                else:
+                    l = default_lengths.get(l2, 1.) if l1 == 'C' else default_lengths.get(l1, 1.)
                 if method == 'first':
-                    coord = rotate_by_basis(pp[i[1]], basis[0], basis[1], kwargs=kwargs)*(lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
+                    # coord = rotate_by_basis(pp[i[1]], basis[0], basis[1], kwargs=kwargs)*(lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
+                    coord = rotate_by_basis(pp[i[1]], basis[0], basis[1], kwargs=kwargs) * l + dim_structure[cur_key]
                 elif method == 'incline':
-                    coord = rotate_non_perpendicular(pp[i[1]], basis[0], basis[1], kwargs=kwargs) * (lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
+                    # coord = rotate_non_perpendicular(pp[i[1]], basis[0], basis[1], kwargs=kwargs) * (lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
+                    coord = rotate_non_perpendicular(pp[i[1]], basis[0], basis[1], kwargs=kwargs) * l + dim_structure[cur_key]
                 elif method == 'ten':
-                    coord = rotate_ten_vars(pp[i[1]], basis)*(lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
+                    # coord = rotate_ten_vars(pp[i[1]], basis)*(lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
+                    coord = rotate_ten_vars(pp[i[1]], basis) * l + dim_structure[cur_key]
                 dim_structure.update({i[0]: coord})
                 poper = bonds_copy.pop(i[0])
                 poper.insert(0, i[0])
@@ -143,7 +160,8 @@ def write_mol2_file(file_name, atoms, positions, bonds):
         for k, num in enumerate(bonds.items()):
             num, i = num
             # print(i, 't',attrs.get(tuple([i[0], i[1]])), attrs.get(tuple([i[1], i[0]])))
-            f1.write("\t{0}\t{1}\t{2}\t{3}\n".format(str(k+1), str(num[0]), str(num[1]), str(i[1])))
+            # print(i)
+            f1.write("\t{0}\t{1}\t{2}\t{3}\n".format(str(k+1), str(num[0]), str(num[1]), str(i[0])))
 
 
 ##############################Mol2_preparations###########################################
@@ -193,18 +211,27 @@ if __name__ == '__main__':
     allows us get information about every atom;
     xyz_names_bonds()- function
     '''
+    import os, tempfile, subprocess
 
-    name = 'Rot_aniline'
+    FNULL = open(os.devnull, 'w')
+    name = 'Aniline'
+    tmpdir = tempfile.mkdtemp()
     # bs, ass = xyz_names_bonds(name + '.mol2')
-    atoms_info = atoms_and_bonds(name + '.mol2')
+    original_xyz = os.path.join(os.curdir, 'mols_dir', name + '.xyz')
+    original_mol2 = os.path.join(tmpdir, name + '.mol2')
+    subprocess.call(['babel', '-ixyz', original_xyz, '-omol2', original_mol2], stdout=FNULL)
+    atoms_info = atoms_and_bonds(original_mol2)
     # print(atoms_info)
+    reconstructed_mol2 = os.path.join(tmpdir, 'My_' + name+'.mol2')
 
 
 
     # write_mol2_file("My_one_atom.mol2", lig_as, dd, bonds=bonds_of_paired(ln[1]))
     # (xyz_names_bonds(name + '.mol2'))
-    ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'), method='ten')#, kwargs={'n_y': 5, 'n_z': 7})
-    # print(ln)
+    # print(xyz_names_bonds(original_mol2))
+    ln = mol2_to_notation(xyz_names_bonds(original_mol2), method='ten')#, kwargs={'n_y': 5, 'n_z': 7})
+    # print(ln[1])
+
     paired = bonds_of_paired(ln[1])
-    dim_structure = dimensional_structure([ln[0], paired], method='ten')#,kwargs={'n_y': 5, 'n_z': 7})
-    write_mol2_file('My_'+name+'.mol2', atoms_info, dim_structure, bonds=paired)
+    dim_structure = dimensional_structure([ln[0], paired], atoms_info, method='ten')#,kwargs={'n_y': 5, 'n_z': 7})
+    # write_mol2_file(reconstructed_mol2, atoms_info, dim_structure, bonds=paired)

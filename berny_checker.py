@@ -5,14 +5,15 @@ from berny2.berny.solvers import MopacSolver
 from mol2_chain import atoms_and_bonds, mol2_to_notation, xyz_names_bonds, bonds_of_paired, dimensional_structure, write_mol2_file, xyz_names
 from mopac_worker import writeInputFile, mopacOut_to_xyz
 
-name = 'pyridine'
+name = 'Aniline'
 sx = 0.05
 # sx = (1+np.cos(0.4*np.pi))**0.5
+
 FNULL = open(os.devnull, 'w')
 # mopac_alias = 'mopac'
 mopac_alias = '/opt/mopac/run_script.sh'
-tmpdir = tempfile.mkdtemp()
-original_xyz = os.path.join(os.curdir, 'mols_dir', name+'.xyz')
+tmpdir = tempfile.mkdtemp() #make temporaly directory
+original_xyz = os.path.join(os.curdir, 'mols_dir', name + '.xyz') #get structure from ./mols_dir/
 
 options = {'Title': 'Smth info about optimization', 'Calculation Type': 'Equilibrium Geometry',
                    'Charge': 0, 'Multiplicity': 1, 'Theory': 'PM7'}
@@ -80,7 +81,6 @@ with open(input_file2, 'w') as f:
 subprocess.check_output(['/opt/mopac/run_script.sh', input_file])
 with open(os.path.join(tmpdir, 'job.out')) as f:
     energy2 = float(next(l for l in f if 'TOTAL ENERGY' in l).split()[3])/ev
-
 print(energy, energy2)
 # print(final.current, final_rec.current)
 shutil.rmtree(tmpdir)

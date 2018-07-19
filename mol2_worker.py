@@ -28,15 +28,10 @@ class Atom():
 
 
 class Bond():
-    def __init__(self, c1, c2, attr, length=1., sections=0):
+    def __init__(self, c1, c2, attr, sections=0):
         self.connected = {c1, c2} # c1<c2
         self.attr = attr
-        self.length = length
         self.sections = sections # [section_c1, section_c2]
-
-    def set_length(self, length):
-        self.length = length
-
 
     def set_section(self, sections):
         self.sections = sections
