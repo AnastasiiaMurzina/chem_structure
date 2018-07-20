@@ -8,15 +8,17 @@ from mol2_worker import xyz_names, xyz_names_bonds, Atom, atoms_and_bonds, Bond
 eps_length = 0.001
 pp = get_penta_points()
 
-default_lengths = {'H': 1.09, 'C': 1.5, 'O': 1.7,
+default_lengths = {'H': 1.09, 'C_1': 1.5, 'O_1': 1.43, 'O_2': 1.75,
                    'Be': 1.93, 'S': 2.0, 'Se': 2.3,
                    'Mg': 2.07, 'B': 1.56, 'Al': 2.24,
                    'In': 2.16, 'Si': 1.86, 'Sn': 2.14,
-                   'Pb': 2.3, 'N': 1.7, 'P': 1.87,
+                   'Pb': 2.3, 'N_1': 1.45, 'N_2': 1.2,
+                   'P': 1.87,
                    'As': 1.98, 'Sb': 2.2, 'Bi': 2.3,
                    'Cr': 1.92, 'Te': 2.05, 'Mo': 2.08,
                    'W': 2.06, 'F': 1.34, 'Cl': 1.76,
-                   'Br': 1.93, 'I': 2.13
+                   'Br': 1.93, 'I': 2.13,
+                   'C_2': 1.34, 'C_ar': 1.4
                    }
 
 ###########################Builder structure if possile else return fail########################
@@ -105,7 +107,7 @@ def dimensional_structure(notation, names, method='first', **kwargs):
     with length
     :return: xyz-info
     '''
-    bonds_l, _ = notation
+    bonds_l, bond_attrs = notation
     first_atom = min(bonds_l.keys())
     dim_structure = {first_atom: np.array([0, 0, 0])}#, np.array([0, 0])]}
     p = bonds_l[first_atom]
@@ -118,8 +120,11 @@ def dimensional_structure(notation, names, method='first', **kwargs):
             if not (i[0] in dim_structure):  # if we don't have position:
                 l1 = names[cur_key].name
                 l2 = names[i[0]].name
+                cur_attr = bond_attrs.get(tuple([cur_key, i[0]]), bond_attrs.get(tuple([i[0], cur_key])))[0]
                 if l1 == l2 == 'C':
-                    l = default_lengths['C']
+                    l = default_lengths['C_'+cur_attr]
+                elif l1 == 'O' or l2 == 'O':
+                    l = default_lengths.get(l2, 1.) if l1 == 'C' else default_lengths.get(l1, 1.)
                 else:
                     l = default_lengths.get(l2, 1.) if l1 == 'C' else default_lengths.get(l1, 1.)
                 if method == 'first':

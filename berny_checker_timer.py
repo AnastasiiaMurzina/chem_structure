@@ -5,7 +5,9 @@ from berny2.berny.solvers import MopacSolver
 from mol2_chain import atoms_and_bonds, mol2_to_notation, xyz_names_bonds, bonds_of_paired, dimensional_structure, write_mol2_file, xyz_names
 from mopac_worker import writeInputFile, mopacOut_to_xyz
 import time
-names = ['Aniline', 'Caffein', 'Cocaine', 'Ethanol', 'Ethene']#, 'Heroin']
+names = ['Cocaine']
+# names = ['Mn-deprot-Mn-bare']
+# names = ['Aniline', 'Caffein', 'Cocaine', 'Ethanol', 'Ethene']#, 'Heroin']
 # names = ['Aniline', 'Caffein', 'Caffein_1', 'Cocaine', 'Ethanol', 'Ethene', 'Heroin', 'Heroin_1', 'Heroin_2',
 #          'Naphthalene', 'Phenol', 'pyridine', 'Toluene']
 sx = 0.05
