@@ -26,7 +26,11 @@ def generateInputFile(opts, mol_file_positions, mol_file_names):
     calcStr = calculations[calculate]
 
     # Charge, mult, calc type, theory:
-    output += ' AUX LARGE CHARGE=%d %s %s %s\n' %\
+    if opts.get('TS'):
+        output += ' AUX LARGE CHARGE=%d %s %s %s %s\n' %\
+        (charge, multStr, calcStr, theory, opts['TS'])
+    else:
+        output += ' AUX LARGE CHARGE=%d %s %s %s\n' %\
         (charge, multStr, calcStr, theory)
     output += '%s\n\n' % title
 
@@ -67,11 +71,21 @@ def mopacOut_to_xyz(mopac_file, outXYZ_file):
     return energy
 
 
+def get_energy(mopac_file):
+    with open(mopac_file, 'r') as f:
+        next(l for l in f if 'FINAL HEAT OF FORMATION' in l)
+        next(f)
+        next(f)
+        energy = float(next(f).split()[-2])
+    return energy
+
+
 if __name__ == '__main__':
     ''' Compare optimizations with Cartesian and Z-matrix'''
     options = {'Title': 'Smth info about optimization', 'Calculation Type': 'Equilibrium Geometry',
-                              'Charge': 0, 'Multiplicity': 1, 'Theory': 'PM6'}
+                              'Charge': 0, 'Multiplicity': 1, 'Theory': 'PM7'}
     # writeInputFile(options, )
+    mopacOut_to_xyz('/home/anastasiia/PycharmProjects/chem_structure/tmp/TS-2b-2c_step1', '/home/anastasiia/PycharmProjects/chem_structure/tmp/TS-2b-2c_step1_from_out.xyz')
 
     # file1 = 'Aniline_cart_av'
     # file2 = 'Aniline_zmax_av'

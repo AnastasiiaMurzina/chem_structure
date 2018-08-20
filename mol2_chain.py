@@ -113,7 +113,8 @@ def dimensional_structure(notation, method='first', **kwargs):
                 elif method == 'incline':
                     coord = rotate_non_perpendicular(pp[i[1]], basis[0], basis[1], kwargs=kwargs) * (lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
                 elif method == 'ten':
-                    coord = rotate_ten_vars(pp[i[1]], basis)*(lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
+                    coord = rotate_ten_vars(pp[i[1]], basis)*\
+                            (lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
                 dim_structure.update({i[0]: coord})
                 poper = bonds_copy.pop(i[0])
                 poper.insert(0, i[0])
