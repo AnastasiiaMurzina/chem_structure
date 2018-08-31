@@ -294,7 +294,7 @@ def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibil
     elif method == 'incline':
         pp_ = rotate_non_perpendicular(pp, basis0[0], basis0[1], **kwargs)
     elif method == 'ten':
-        pp_ = rotate_ten_vars(pp, basis0)
+        pp_ = rotate_ten_vars(pp, basis0, **kwargs)
     if all_posibility:
         return min([[np.linalg.norm(ppx - vec), ix] for ix, ppx in enumerate(pp_)])[1]
     while True:
@@ -308,7 +308,7 @@ def get_reversed_section_and_basis(s, b0, method='first', **kwargs):
     if method == 'first':
         return find_basis(np.zeros(3), rotate_by_basis(pp[s], b0[0], b0[1], **kwargs), **kwargs)
     elif method == 'ten':
-        return find_basis(np.zeros(3), rotate_ten_vars(pp[s], b0), **kwargs)
+        return find_basis(np.zeros(3), rotate_ten_vars(pp[s], b0, **kwargs), **kwargs)
     return find_basis(np.zeros(3), rotate_non_perpendicular(pp[s], b0[0], b0[1], **kwargs), **kwargs)
 
 
@@ -347,7 +347,7 @@ def find_basis(point, connected, method='first', **kwargs):
                 v = i - point
                 v /= np.linalg.norm(v)
                 diff.append(min([np.linalg.norm(v - ppx) for ppx in
-                                 rotate_ten_vars(pp, j)]))
+                                 rotate_ten_vars(pp, j, **kwargs)]))
             diffs.append([max(diff), j])
         # return min(diff)[1]
     return min(diffs)[1]

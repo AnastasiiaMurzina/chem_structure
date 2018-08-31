@@ -396,7 +396,7 @@ if __name__ == '__main__':
     # bs = find_basis(np.array([0, 0, 0]), rotate_by_basis(pp[4], 1, 2))
     # print(bs)
     # show_points(pp)
-    # show_named_points1({i: icos[i] for i in range(20)})
+    show_named_points1({i: icos[i] for i in range(20)})
     # for i in icos:
     #     print(np.linalg.norm(i/np.linalg.norm(i)))
     pass
