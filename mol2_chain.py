@@ -1,12 +1,12 @@
 import numpy as np
 import copy
-from penta_with_rotate import get_penta_points, find_section,\
-    rotate_by_basis, find_basis, rotate_non_perpendicular, rotate_ten_vars, n_y, n_z
+from icosahedron_with_rotate import get_penta_points, find_section,\
+    rotate_by_basis, find_basis, rotate_non_perpendicular, rotate_ten_vars, n_y, n_z, ico_points_from_penta
 from mol2_worker import xyz_names, xyz_names_bonds, Atom, atoms_and_bonds, Bond
 # from many_mols import molecular_divider, get_notation_many_mols, insert_zero_bonds
 
 eps_length = 0.001
-pp = get_penta_points()
+pp = ico_points_from_penta()
 
 ###########################Builder structure if possile else return fail########################
 def prepare_bonds(bonds):
@@ -78,12 +78,12 @@ def mol2_to_notation(info_from_file, method='first', **kwargs):
     for key, item in atoms.items():
         cur_p = positions_copy.pop(key).position()
         connected = [i[0] for i in bonds2[key]]
-        basis = find_basis(cur_p, [atoms[i].position() for i in connected], method=method, kwargs=kwargs)
-        notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, method=method, kwargs=kwargs)]
+        basis = find_basis(cur_p, [atoms[i].position() for i in connected], method=method, **kwargs)
+        notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, method=method, **kwargs)]
                                          for i in connected]), basis]})
         atoms[key].set_orientation(basis)
 
-        notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, method=method, kwargs=kwargs)]
+        notation.update({key: [list([[i, find_section(cur_p, atoms[i].position(), basis0=basis, method=method, **kwargs)]
                                      for i in connected]), basis]})
     for key, item in bonds.items():
         for i in range(len(item)):
@@ -109,9 +109,9 @@ def dimensional_structure(notation, method='first', **kwargs):
         for i in bonds:  # build bonds for cur_key atom
             if not (i[0] in dim_structure):  # if we don't have position:
                 if method == 'first':
-                    coord = rotate_by_basis(pp[i[1]], basis[0], basis[1], kwargs=kwargs)*(lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
+                    coord = rotate_by_basis(pp[i[1]], basis[0], basis[1], **kwargs)*(lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
                 elif method == 'incline':
-                    coord = rotate_non_perpendicular(pp[i[1]], basis[0], basis[1], kwargs=kwargs) * (lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
+                    coord = rotate_non_perpendicular(pp[i[1]], basis[0], basis[1], **kwargs) * (lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
                 elif method == 'ten':
                     coord = rotate_ten_vars(pp[i[1]], basis)*\
                             (lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
@@ -195,17 +195,16 @@ if __name__ == '__main__':
     xyz_names_bonds()- function
     '''
 
-    name = 'Rot_aniline'
+    name = 'Cocaine'
     # bs, ass = xyz_names_bonds(name + '.mol2')
     atoms_info = atoms_and_bonds(name + '.mol2')
     # print(atoms_info)
-
-
+    mth = 'first'
 
     # write_mol2_file("My_one_atom.mol2", lig_as, dd, bonds=bonds_of_paired(ln[1]))
     # (xyz_names_bonds(name + '.mol2'))
-    ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'), method='ten')#, kwargs={'n_y': 5, 'n_z': 7})
+    ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'), method=mth, n_y=4, n_z=4, fr=1, sr=7, r=0.6)#, kwargs={'n_y': 5, 'n_z': 7})
     # print(ln)
     paired = bonds_of_paired(ln[1])
-    dim_structure = dimensional_structure([ln[0], paired], method='ten')#,kwargs={'n_y': 5, 'n_z': 7})
-    write_mol2_file('My_'+name+'.mol2', atoms_info, dim_structure, bonds=paired)
+    dim_structure = dimensional_structure([ln[0], paired], method=mth, n_y=4, n_z=4, fr=1, sr=7, r=0.6)#,kwargs={'n_y': 5, 'n_z': 7})
+    write_mol2_file('My_'+name+'_'+mth+'.mol2', atoms_info, dim_structure, bonds=paired)

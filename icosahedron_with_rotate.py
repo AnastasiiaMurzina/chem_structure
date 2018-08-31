@@ -23,7 +23,7 @@ min_distance = h / 2  # for decoding position
 # Rotation consts
 eps_length = 0.001
 d_hor_angle = 2 * pi / 5
-d_ver_angle = pi / 3
+d_ver_angle = pi / 10
 n_y = 4
 n_z = 4
 
@@ -85,6 +85,22 @@ def get_penta_points(point_center=np.zeros(3)):
 
 
 pp = get_penta_points()
+
+def ico_points_from_penta():
+    icos = []
+    for i in range(1,5):
+        icos.append(np.array([(pp[0][j]+pp[i][j]+pp[i+1][j])/3. for j in range(3)]))
+        icos.append(np.array([(pp[6+i][j]+pp[i][j]+pp[i+1][j])/3. for j in range(3)]))
+    icos.append(np.array([(pp[0][j]+pp[1][j]+pp[5][j])/3. for j in range(3)]))
+    icos.append(np.array([(pp[11][j]+pp[1][j]+pp[5][j])/3. for j in range(3)]))
+    for i in range(7,11):
+        icos.append(np.array([(pp[6][j]+pp[i][j]+pp[i+1][j])/3. for j in range(3)]))
+        icos.append(np.array([(pp[i-5][j]+pp[i][j]+pp[i+1][j])/3. for j in range(3)]))
+    icos.append(np.array([(pp[6][j]+pp[7][j]+pp[11][j])/3. for j in range(3)]))
+    icos.append(np.array([(pp[1][j]+pp[7][j]+pp[11][j])/3. for j in range(3)]))
+    return [i/np.linalg.norm(i) for i in icos]
+
+icos = ico_points_from_penta()
 ###################################################
 
 def show_points(points):
@@ -188,8 +204,8 @@ def rotate_ten_vars(point, i1, **kwargs):
     radius = kwargs.get('r', 0.7)
     b = list(product([-radius, 0, radius], repeat=2))
     operator = Rz(d_hor_angle*b[i1][0]).dot(Ry(d_ver_angle*b[i1][1]))
-    pp_ = [i.dot(operator) for i in pp]
-    for i in pp:
+    pp_ = [i.dot(operator) for i in icos]
+    for i in icos:
         pp_.append(i)
         # show_points(pp_)
     # operator = []
@@ -210,7 +226,7 @@ def rotate_non_perpendicular(point, y, z, **kwargs): # fr=1..2; sr=6..10
     fr = kwargs.get('fr', 1)
     sr = kwargs.get('sr', 6)
 
-    arounder = pp[fr]-pp[sr]
+    arounder = icos[fr]-icos[sr]
     W = np.zeros((3, 3))
     W[0, 1] = -arounder[2]
     W[0, 2] = arounder[1]
@@ -260,7 +276,7 @@ def check_diff_rotate(n_y, n_z):
     dhs = []
     for i in range(n_y):
         for j in range(n_z):
-            dhs.append(np.array(rotate_by_basis(pp, i, j, **{'n_y': n_y, 'n_z': n_z})))
+            dhs.append(np.array(rotate_by_basis(icos, i, j, **{'n_y': n_y, 'n_z': n_z})))
     diff = 1
     for i0, i in enumerate(dhs):
         for j0, j in enumerate(dhs):
@@ -290,11 +306,11 @@ def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibil
     vec = p1 - p0
     vec = np.array([i/np.linalg.norm(vec) for i in vec])
     if method == 'first':
-        pp_ = rotate_by_basis(pp, basis0[0], basis0[1], **kwargs)
+        pp_ = rotate_by_basis(icos, basis0[0], basis0[1], **kwargs)
     elif method == 'incline':
-        pp_ = rotate_non_perpendicular(pp, basis0[0], basis0[1], **kwargs)
+        pp_ = rotate_non_perpendicular(icos, basis0[0], basis0[1], **kwargs)
     elif method == 'ten':
-        pp_ = rotate_ten_vars(pp, basis0)
+        pp_ = rotate_ten_vars(icos, basis0, **kwargs)
     if all_posibility:
         return min([[np.linalg.norm(ppx - vec), ix] for ix, ppx in enumerate(pp_)])[1]
     while True:
@@ -306,10 +322,10 @@ def find_section(p0, p1, basis0=np.zeros(2), let_accurance=step_rot, all_posibil
 
 def get_reversed_section_and_basis(s, b0, method='first', **kwargs):
     if method == 'first':
-        return find_basis(np.zeros(3), rotate_by_basis(pp[s], b0[0], b0[1], **kwargs), **kwargs)
+        return find_basis(np.zeros(3), rotate_by_basis(icos[s], b0[0], b0[1], **kwargs), **kwargs)
     elif method == 'ten':
-        return find_basis(np.zeros(3), rotate_ten_vars(pp[s], b0), **kwargs)
-    return find_basis(np.zeros(3), rotate_non_perpendicular(pp[s], b0[0], b0[1], **kwargs), **kwargs)
+        return find_basis(np.zeros(3), rotate_ten_vars(icos[s], b0, **kwargs), **kwargs)
+    return find_basis(np.zeros(3), rotate_non_perpendicular(icos[s], b0[0], b0[1], **kwargs), **kwargs)
 
 
 def find_basis(point, connected, method='first', **kwargs):
@@ -327,7 +343,7 @@ def find_basis(point, connected, method='first', **kwargs):
             for i in connected:
                 v = i - point
                 v /= np.linalg.norm(v)
-                diff.append(min([np.linalg.norm(v - ppx) for ppx in rotate_by_basis(pp, j[0], j[1], **kwargs)]))
+                diff.append(min([np.linalg.norm(v - ppx) for ppx in rotate_by_basis(icos, j[0], j[1], **kwargs)]))
             diffs.append([max(diff), j])
         return min(diffs)[1]
     if method == 'incline':
@@ -337,7 +353,7 @@ def find_basis(point, connected, method='first', **kwargs):
                 v = i - point
                 v /= np.linalg.norm(v)
                 diff.append(min([np.linalg.norm(v - ppx) for ppx in
-                                     rotate_non_perpendicular(pp, j[0], j[1], **kwargs)]))
+                                     rotate_non_perpendicular(icos, j[0], j[1], **kwargs)]))
 
             diffs.append([max(diff), j])
     if method == 'ten':
@@ -347,7 +363,7 @@ def find_basis(point, connected, method='first', **kwargs):
                 v = i - point
                 v /= np.linalg.norm(v)
                 diff.append(min([np.linalg.norm(v - ppx) for ppx in
-                                 rotate_ten_vars(pp, j)]))
+                                 rotate_ten_vars(icos, j, **kwargs)]))
             diffs.append([max(diff), j])
         # return min(diff)[1]
     return min(diffs)[1]
@@ -380,4 +396,7 @@ if __name__ == '__main__':
     # bs = find_basis(np.array([0, 0, 0]), rotate_by_basis(pp[4], 1, 2))
     # print(bs)
     # show_points(pp)
+    # show_named_points1({i: icos[i] for i in range(20)})
+    # for i in icos:
+    #     print(np.linalg.norm(i/np.linalg.norm(i)))
     pass

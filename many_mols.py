@@ -44,7 +44,7 @@ def get_notation_many_mols(atoms, bonds, method='first', **kwargs):
         lig_as = ligs_as[i]
         lig_bs = lig_bonds[i]
         if lig_bs != []:
-            ln = mol2_to_notation([lig_bs, lig_as], method=method, kwargs=kwargs)
+            ln = mol2_to_notation([lig_bs, lig_as], method=method, **kwargs)
             not_atoms.update({i: ln[0]})
             not_bonds.update({i: ln[1]})
         else:
@@ -59,7 +59,7 @@ def places_for_zero_bonds(atoms, bonds, method='first', firmly=False, **kwargs):
     :param bonds: see get_notation_many_mols
     :return: {mol_to_connect: [[length, atom_with_connect, atom_of_this_mol],[...]], ...}
     '''
-    not_atoms, not_bonds = get_notation_many_mols(atoms, bonds, method=method, kwargs=kwargs)
+    not_atoms, not_bonds = get_notation_many_mols(atoms, bonds, method=method, **kwargs)
     # div_atoms, _, _ = molecular_divider(atoms, bonds)
     finder_zeros = large_order(not_atoms)
     nearests = {}
@@ -109,7 +109,7 @@ def unpack_with_zero_bonds(atoms_not, bonds_not, zero_bonds, method='first', **k
         return positions/2-avs/2
     for _, key in reversed(large_order(atoms_not)):
         if bonds_not[key] != []:
-            ds = dimensional_structure([atoms_not[key], bonds_of_paired(bonds_not[key])], method=method, kwargs=kwargs)
+            ds = dimensional_structure([atoms_not[key], bonds_of_paired(bonds_not[key])], method=method, **kwargs)
             if the_largest_flag:
                 the_largest_flag = False
                 dim_structure = ds
