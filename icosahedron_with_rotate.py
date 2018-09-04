@@ -371,9 +371,7 @@ def find_basis(point, connected, method='first', **kwargs):
 
 def get_error_of_point(point, method='first', **kwargs):
     basis = find_basis(np.zeros(3), [point], method=method, **kwargs)
-    print(basis)
     section = find_section(np.zeros(3), point, basis0=basis, method=method, **kwargs)
-    print(section)
     if method == 'first':
         pp_ = rotate_by_basis(icos, basis[0], basis[1], **kwargs)
     elif method == 'incline':

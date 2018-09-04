@@ -101,8 +101,8 @@ if __name__ == '__main__':
     # ax = fig.add_subplot(111, projection='3d')
     n = 5000
     phi, theta = [], []
-    method = 'incline'
-    n_y, n_z = 5, 5
+    method = 'ten'
+    n_y, n_z = 3, 3
     color_map = plt.get_cmap('RdBu')
 
     fig = plt.figure()
