@@ -191,11 +191,12 @@ def rotate_ten_vars(point, i1, **kwargs):
     pp_ = [i.dot(operator) for i in pp]
     for i in pp:
         pp_.append(i)
-        # show_points(pp_)
-    # operator = []
     if isinstance(point, (np.ndarray)):
-        return point.dot(operator)
-    return [i.dot(operator) for i in point]
+        n_point = point.dot(operator)
+        return n_point/np.linalg.norm(n_point)
+    n_points = [i.dot(operator) for i in point]
+    return [i/np.linalg.norm(i) for i in n_points]
+
 
 def rotate_non_perpendicular(point, y, z, **kwargs): # fr=1..2; sr=6..10
     '''
@@ -222,8 +223,10 @@ def rotate_non_perpendicular(point, y, z, **kwargs): # fr=1..2; sr=6..10
     rotated_matrix = np.eye(3)+np.sin(phi)*W+(2*(np.sin(phi/2)**2))*W**2
     operator = Rz(d_hor_angle * z / n_z_l).dot(rotated_matrix)
     if isinstance(point, (np.ndarray)):
-        return point.dot(operator)
-    return [i.dot(operator) for i in point]
+        n_point = point.dot(operator)
+        return n_point/np.linalg.norm(n_point)
+    n_points = [i.dot(operator) for i in point]
+    return [i/np.linalg.norm(i) for i in n_points]
 
 
 def point_to_angles(point):
@@ -349,7 +352,6 @@ def find_basis(point, connected, method='first', **kwargs):
                 diff.append(min([np.linalg.norm(v - ppx) for ppx in
                                  rotate_ten_vars(pp, j, **kwargs)]))
             diffs.append([max(diff), j])
-        # return min(diff)[1]
     return min(diffs)[1]
 
 

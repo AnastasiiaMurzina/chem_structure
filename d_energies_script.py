@@ -5,6 +5,12 @@ from icosahedron_with_rotate import *
 from penta_with_rotate import *
 from itertools import product
 from mol2_chain import atoms_and_bonds, mol2_to_notation, xyz_names_bonds, bonds_of_paired, dimensional_structure, write_mol2_file
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+import numpy as np
+
+import numpy.random
+from numpy import arccos, arctan
 
 def smth_before_script():
     atom_name = "Caffein"
@@ -88,15 +94,7 @@ def smth_before_script():
         shutil.rmtree(tmpdir)
 
 
-if __name__ == '__main__':
-    from mpl_toolkits.mplot3d import Axes3D
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    import numpy.random
-    from numpy import arccos, arctan
-
-    def graphic_errors():
+def graphic_errors():
     # fig = plt.figure()
     # ax = fig.add_subplot(111, projection='3d')
         n = 10000
@@ -122,38 +120,39 @@ if __name__ == '__main__':
         cb.set_label('Discrete errors, average='+str(format(average_error, '.2g')), fontsize=14)
         plt.show()
 
+def graphic_first_ico():
+    for j in product(range(9), repeat=2):
+        icos_ = rotate_by_basis(icos, j[0], j[1])
+        for i in icos_:
+            theta = arccos(i[2])
+            phi = arctan(i[1]/i[0])
+            plt.scatter(theta, phi)
+    plt.show()
+
+def graphic_incline_ico():
+    for j in product(range(9), repeat=2):
+        icos_ = rotate_non_perpendicular(icos, j[0], j[1])
+        for i in icos_:
+            theta = arccos(i[2])
+            phi = arctan(i[1] / i[0])
+            plt.scatter(theta, phi)
+    plt.show()
+
+def graphic_ten_ico():
+    for j in range(9):
+        icos_ = rotate_ten_vars(icos, j)
+        for i in icos_:
+            theta = arccos(i[2])
+            phi = arctan(i[1] / i[0])
+            plt.scatter(theta, phi)
+    plt.show()
+
+
+if __name__ == '__main__':
     graphic_errors()
 
-    def graphic_first_ico():
-        for j in product(range(9), repeat=2):
-            icos_ = rotate_by_basis(icos, j[0], j[1])
-            for i in icos_:
-                theta = arccos(i[2])
-                phi = arctan(i[1]/i[0])
-                plt.scatter(theta, phi)
-        plt.show()
-
     # graphic_first_ico()
-
-    def graphic_incline_ico():
-        for j in product(range(9), repeat=2):
-            icos_ = rotate_non_perpendicular(icos, j[0], j[1])
-            for i in icos_:
-                theta = arccos(i[2])
-                phi = arctan(i[1] / i[0])
-                plt.scatter(theta, phi)
-        plt.show()
-
     # graphic_incline_ico()
-
-    def graphic_ten_ico():
-        for j in range(9):
-            icos_ = rotate_ten_vars(icos, j)
-            for i in icos_:
-                theta = arccos(i[2])
-                phi = arctan(i[1] / i[0])
-                plt.scatter(theta, phi)
-        plt.show()
 
     # graphic_ten_ico()
 
