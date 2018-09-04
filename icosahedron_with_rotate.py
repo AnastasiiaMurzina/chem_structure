@@ -223,8 +223,8 @@ def rotate_non_perpendicular(point, y, z, **kwargs): # fr=1..2; sr=6..10
     '''
     n_y_l = kwargs.get('n_y', n_y)
     n_z_l = kwargs.get('n_z', n_z)
-    fr = kwargs.get('fr', 1)
-    sr = kwargs.get('sr', 6)
+    fr = kwargs.get('fr', 9)
+    sr = kwargs.get('sr', 13)
 
     arounder = icos[fr]-icos[sr]
     W = np.zeros((3, 3))
@@ -238,8 +238,10 @@ def rotate_non_perpendicular(point, y, z, **kwargs): # fr=1..2; sr=6..10
     rotated_matrix = np.eye(3)+np.sin(phi)*W+(2*(np.sin(phi/2)**2))*W**2
     operator = Rz(d_hor_angle * z / n_z_l).dot(rotated_matrix)
     if isinstance(point, (np.ndarray)):
-        return point.dot(operator)
-    return [i.dot(operator) for i in point]
+        rot_p = point.dot(operator)
+        return rot_p/np.linalg.norm(rot_p)
+    rot_ps = [i.dot(operator) for i in point]
+    return [i/np.linalg.norm(i) for i in rot_ps]
 
 
 def point_to_angles(point):
@@ -354,7 +356,6 @@ def find_basis(point, connected, method='first', **kwargs):
                 v /= np.linalg.norm(v)
                 diff.append(min([np.linalg.norm(v - ppx) for ppx in
                                      rotate_non_perpendicular(icos, j[0], j[1], **kwargs)]))
-
             diffs.append([max(diff), j])
     if method == 'ten':
         for j in range(9):
@@ -368,9 +369,38 @@ def find_basis(point, connected, method='first', **kwargs):
         # return min(diff)[1]
     return min(diffs)[1]
 
+def get_error_of_point(point, method='first', **kwargs):
+    basis = find_basis(np.zeros(3), [point], method=method, **kwargs)
+    print(basis)
+    section = find_section(np.zeros(3), point, basis0=basis, method=method, **kwargs)
+    print(section)
+    if method == 'first':
+        pp_ = rotate_by_basis(icos, basis[0], basis[1], **kwargs)
+    elif method == 'incline':
+        pp_ = rotate_non_perpendicular(icos, basis[0], basis[1], **kwargs)
+    elif method == 'ten':
+        pp_ = rotate_ten_vars(icos, basis, **kwargs)
+    # section = find_section(np.zeros(3), point,method=method)
+    return np.linalg.norm(point-pp_[section])
+    # if method == 'first':
+    #     return np.linalg.norm(point-)
+    # elif method == 'ten':
+    #     return find_basis(np.zeros(3), rotate_ten_vars(icos[s], b0, **kwargs), **kwargs)
+    # return find_basis(np.zeros(3), rotate_non_perpendicular(icos[s], b0[0], b0[1], **kwargs), **kwargs)
+
 
 
 if __name__ == '__main__':
+    # print(icos[0])
+    # for i in rotate_by_basis(icos, 1, 1, n_y=4, n_z=4):
+    #     print('\t'.join([str(a) for a in i]))
+    # print(get_error_of_point(rotate_by_basis(icos[3], 1, 2, n_y=4, n_z=4), method='first', n_y=4, n_z=4))
+    n_y = 10
+    n_z = 11
+    # print(rotate_non_perpendicular(icos[3], 7, 2, n_y=n_y, n_z=n_z))
+    # print(get_error_of_point(rotate_non_perpendicular(icos[5], 7, 10, n_y=n_y, n_z=n_z), method='incline', n_y=n_y, n_z=n_z))
+    print(get_error_of_point(rotate_ten_vars(icos[5], 8), method='ten'))
+    # print(get_error_of_point(rotate_ten_vars(icos[3], 1), method='ten'))
 ####################find_section_and_rotate tests#####################################
     # for i in range(12): # p0 - rotated point, p1 - center
     #     for j in sorted(product((0, 1, 2, 3), repeat=2), key=lambda x: sum(x)):
@@ -396,7 +426,7 @@ if __name__ == '__main__':
     # bs = find_basis(np.array([0, 0, 0]), rotate_by_basis(pp[4], 1, 2))
     # print(bs)
     # show_points(pp)
-    show_named_points1({i: icos[i] for i in range(20)})
+    # show_named_points1({i: icos[i] for i in range(20)})
     # for i in icos:
     #     print(np.linalg.norm(i/np.linalg.norm(i)))
     pass

@@ -3,6 +3,7 @@ import copy
 from icosahedron_with_rotate import get_penta_points, find_section,\
     rotate_by_basis, find_basis, rotate_non_perpendicular, rotate_ten_vars, n_y, n_z, ico_points_from_penta
 from mol2_worker import xyz_names, xyz_names_bonds, Atom, atoms_and_bonds, Bond
+from mopac_worker import get_energy_of_mol2
 # from many_mols import molecular_divider, get_notation_many_mols, insert_zero_bonds
 
 eps_length = 0.001
@@ -195,16 +196,81 @@ if __name__ == '__main__':
     xyz_names_bonds()- function
     '''
 
-    name = 'Ethanol'
+    # name = 'D_Gluose_opt'
+    # # bs, ass = xyz_names_bonds(name + '.mol2')
+    # atoms_info = atoms_and_bonds(name + '.mol2')
+    # # print(atoms_info)
+    # mth = 'ten'
+    #
+    # # write_mol2_file("My_one_atom.mol2", lig_as, dd, bonds=bonds_of_paired(ln[1]))
+    # # (xyz_names_bonds(name + '.mol2'))
+    # ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'), method=mth, n_y=2, n_z=2, fr=9, sr=13, r=0.6)#, kwargs={'n_y': 5, 'n_z': 7})
+    # # print(ln)
+    # paired = bonds_of_paired(ln[1])
+    # dim_structure = dimensional_structure([ln[0], paired], method=mth, n_y=2, n_z=2, fr=9, sr=13, r=0.6)#,kwargs={'n_y': 5, 'n_z': 7})
+    # write_mol2_file('My_'+name+'_'+mth+'.mol2', atoms_info, dim_structure, bonds=paired)
+
+    ###################################Check_3_9######################################333
+    import os, glob, subprocess
+    def create_mol2s():
+        g_dir = os.path.join(os.getcwd(), 'mols_dir', 'Molecules')
+        r_dir = os.path.join(os.getcwd(), 'tmp', 'ico_first')
+        for i in [x[0] for x in os.walk(g_dir)][1::]:
+            cur_d = os.path.join(g_dir, i.split('/')[-1])
+            cur_r_d = os.path.join(r_dir, os.path.basename(os.path.normpath(cur_d)))
+            os.mkdir(cur_r_d)
+            files = glob.glob(i + '/*_opt.xyz')
+            for xyz_opt_file in files:
+                # print(xyz_opt_file)
+                mol2_file = os.path.join(r_dir, os.path.basename(os.path.normpath(xyz_opt_file)))
+                subprocess.call(['babel', '-ixyz', xyz_opt_file, '-omol2', mol2_file[:-4:]+'.mol2'])
+
+    def hist_erros(mth):
+        r_dir = os.path.join(os.getcwd(), 'tmp', 'ico_first')
+        mth = 'first'
+        n_y, n_z = 4, 4
+        # print(r_dir)
+        graphic = []
+        for name in glob.glob(r_dir + '/*_opt.mol2'):
+            # print(name)
+            exactly_name = os.path.basename(os.path.normpath(name))
+            bs, ass = xyz_names_bonds(name)
+            atoms_info = atoms_and_bonds(name)
+
+            ln = mol2_to_notation(xyz_names_bonds(name), method=mth, n_y=n_y, n_z=n_z, fr=9, sr=13,
+                                  r=0.6)  # , kwargs={'n_y': 5, 'n_z': 7})
+            # print(ln)
+            paired = bonds_of_paired(ln[1])
+            dim_structure = dimensional_structure([ln[0], paired], method=mth, n_y=n_y, n_z=n_z, fr=9, sr=13,
+                                                  r=0.6)  # ,kwargs={'n_y': 5, 'n_z': 7})
+            dec_file = os.path.join(r_dir, 'My_' + exactly_name[:-5:] + '_' + mth + '.mol2')
+            write_mol2_file(dec_file, atoms_info, dim_structure, bonds=paired)
+            print(exactly_name)
+            en_norm = get_energy_of_mol2(name)
+            en_no_norm = get_energy_of_mol2(dec_file)
+            print(en_no_norm, en_norm, 'cycle' if open(name, 'r').read().count('ar') >= 3 else '')
+            graphic.append(abs((en_no_norm-en_norm)/en_norm))
+
+        import matplotlib.pyplot as plt
+        plt.hist(graphic)
+        plt.xlabel('\delta energy / energy_of_original')
+        plt.show()
+        from mopac_worker import get_energy
+        # print(exactly_name)
+
+        # files = glob.glob(i + '/*.arc')
+
     # bs, ass = xyz_names_bonds(name + '.mol2')
-    atoms_info = atoms_and_bonds(name + '.mol2')
+    # atoms_info = atoms_and_bonds(name + '.mol2')
     # print(atoms_info)
-    mth = 'first'
+
 
     # write_mol2_file("My_one_atom.mol2", lig_as, dd, bonds=bonds_of_paired(ln[1]))
     # (xyz_names_bonds(name + '.mol2'))
-    ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'), method=mth, n_y=2, n_z=2, fr=9, sr=13, r=0.6)#, kwargs={'n_y': 5, 'n_z': 7})
+    # ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'), method=mth, n_y=n_y, n_z=n_z, fr=9, sr=13,
+    #                       r=0.6)  # , kwargs={'n_y': 5, 'n_z': 7})
     # print(ln)
-    paired = bonds_of_paired(ln[1])
-    dim_structure = dimensional_structure([ln[0], paired], method=mth, n_y=2, n_z=2, fr=9, sr=13, r=0.6)#,kwargs={'n_y': 5, 'n_z': 7})
-    write_mol2_file('My_'+name+'_'+mth+'.mol2', atoms_info, dim_structure, bonds=paired)
+    # paired = bonds_of_paired(ln[1])
+    # dim_structure = dimensional_structure([ln[0], paired], method=mth, n_y=n_y, n_z=n_z, fr=9, sr=13,
+    #                                       r=0.6)  # ,kwargs={'n_y': 5, 'n_z': 7})
+    # write_mol2_file('My_' + name + '_' + mth + '.mol2', atoms_info, dim_structure, bonds=paired)
