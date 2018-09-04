@@ -96,40 +96,64 @@ if __name__ == '__main__':
     import numpy.random
     from numpy import arccos, arctan
 
-
+    def graphic_errors():
     # fig = plt.figure()
     # ax = fig.add_subplot(111, projection='3d')
-    n = 5000
-    phi, theta = [], []
-    method = 'ten'
-    n_y, n_z = 3, 3
-    color_map = plt.get_cmap('RdBu')
+        n = 10000
+        method = 'first'
+        n_y, n_z = 5, 5
+        color_map = plt.get_cmap('cool')
+        average_error = 0
+        fig = plt.figure()
+        ax1 = plt.subplot(111)
+        for i in range(n):
+            x, y, z = numpy.random.normal(size=3)
+            r = (x**2+y**2+z**2)**0.5
+            x /= r
+            y /= r
+            z /= r
+            theta = arccos(z)
+            phi = arctan(y/x)
+            cur_err = get_error_of_point(np.array([x, y, z]), method=method, n_y=n_y, n_z=n_z)
+            sc = ax1.scatter(theta, phi, c=cur_err, cmap=color_map, vmin=0, vmax=0.3)
+            average_error += cur_err/n
+        ax1.set_title(method+', icosahedron, n_y='+str(n_y)+', n_z='+str(n_z))
+        cb = fig.colorbar(sc, orientation='horizontal', drawedges=False)
+        cb.set_label('Discrete errors, average='+str(format(average_error, '.2g')), fontsize=14)
+        plt.show()
 
-    fig = plt.figure()
-    ax1 = plt.subplot(111)
-    for i in range(n):
-        x, y, z = numpy.random.normal(size=3)
-        r = (x**2+y**2+z**2)**0.5
-        x /= r
-        y /= r
-        z /= r
-        theta = arccos(z)
-        # theta.append(arccos(z))
-        # phi.append(arctan(y/x))
-        phi = arctan(y/x)
-        sc = ax1.scatter(theta, phi, c=get_error_of_point(np.array(
-        [x, y, z]
-    ), method=method, n_y=n_y, n_z=n_z), cmap=color_map, vmin=0, vmax=0.4)
+    graphic_errors()
 
-    # errors = list(map(lambda a, b: get_error_of_point(np.array(
-    #     [sin(a)*cos(b), sin(a)*cos(b), cos(a)]
-    # ), method=method, n_y=n_y, n_z=n_z), theta, phi))
-    #
-    # sc = ax1.scatter(theta, phi, c=errors, cmap=color_map, vmin=min(errors), vmax=max(errors))
+    def graphic_first_ico():
+        for j in product(range(9), repeat=2):
+            icos_ = rotate_by_basis(icos, j[0], j[1])
+            for i in icos_:
+                theta = arccos(i[2])
+                phi = arctan(i[1]/i[0])
+                plt.scatter(theta, phi)
+        plt.show()
 
-    fig.set_label(method+', icosahedron, n_y='+str(n_y)+', n_z='+str(n_z))
-    # ax1.get_label()
-    cb = fig.colorbar(sc, orientation='horizontal', drawedges=False)
-    cb.set_label('Discrete errors', fontsize=14)
-    plt.show()
-    # print(sum(errors)/n)
+    # graphic_first_ico()
+
+    def graphic_incline_ico():
+        for j in product(range(9), repeat=2):
+            icos_ = rotate_non_perpendicular(icos, j[0], j[1])
+            for i in icos_:
+                theta = arccos(i[2])
+                phi = arctan(i[1] / i[0])
+                plt.scatter(theta, phi)
+        plt.show()
+
+    # graphic_incline_ico()
+
+    def graphic_ten_ico():
+        for j in range(9):
+            icos_ = rotate_ten_vars(icos, j)
+            for i in icos_:
+                theta = arccos(i[2])
+                phi = arctan(i[1] / i[0])
+                plt.scatter(theta, phi)
+        plt.show()
+
+    # graphic_ten_ico()
+

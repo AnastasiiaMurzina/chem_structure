@@ -393,8 +393,14 @@ if __name__ == '__main__':
     # for i in rotate_by_basis(icos, 1, 1, n_y=4, n_z=4):
     #     print('\t'.join([str(a) for a in i]))
     # print(get_error_of_point(rotate_by_basis(icos[3], 1, 2, n_y=4, n_z=4), method='first', n_y=4, n_z=4))
-    n_y = 10
-    n_z = 11
+    # n_y = 10
+    # n_z = 11
+    for j in sorted(product(range(1,15), repeat=2), key=lambda x: sum(x)):
+        for inner in sorted(product(range(0, j[0]-1), range(0,j[1]-1)), key=lambda x: sum(x)):
+            for ix in icos:
+                if get_error_of_point(rotate_by_basis(ix, inner[0], inner[1], n_y=j[0], n_z=j[1]), method='first', n_y=j[0], n_z=j[1]) != 0:
+                    print(j, inner)
+
     # print(rotate_non_perpendicular(icos[3], 7, 2, n_y=n_y, n_z=n_z))
     # print(get_error_of_point(rotate_non_perpendicular(icos[5], 7, 10, n_y=n_y, n_z=n_z), method='incline', n_y=n_y, n_z=n_z))
     print(get_error_of_point(rotate_ten_vars(icos[5], 8), method='ten'))
