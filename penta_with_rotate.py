@@ -354,9 +354,21 @@ def find_basis(point, connected, method='first', **kwargs):
             diffs.append([max(diff), j])
     return min(diffs)[1]
 
+def get_error_of_point(point, method='first', **kwargs):
+    basis = find_basis(np.zeros(3), point, method=method, **kwargs)
+    section = find_section(np.zeros(3), point, basis0=basis, method=method, **kwargs)
+    if method == 'first':
+        pp_ = rotate_by_basis(pp, basis[0], basis[1], **kwargs)
+    elif method == 'incline':
+        pp_ = rotate_non_perpendicular(pp, basis[0], basis[1], **kwargs)
+    elif method == 'ten':
+        pp_ = rotate_ten_vars(pp, basis, **kwargs)
+    # section = find_section(np.zeros(3), point,method=method)
+    return np.linalg.norm(point-pp_[section])
 
 
 if __name__ == '__main__':
+    print(get_error_of_point(rotate_non_perpendicular(pp[0], 2, 3, n_y=4, n_z=4), method='incline', n_y=4, n_z=4))
 ####################find_section_and_rotate tests#####################################
     # for i in range(12): # p0 - rotated point, p1 - center
     #     for j in sorted(product((0, 1, 2, 3), repeat=2), key=lambda x: sum(x)):

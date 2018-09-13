@@ -243,6 +243,27 @@ def rotate_non_perpendicular(point, y, z, **kwargs): # fr=1..2; sr=6..10
     rot_ps = [i.dot(operator) for i in point]
     return [i/np.linalg.norm(i) for i in rot_ps]
 
+def rotate_radius_vars(point, i1, **kwargs):
+    ''' Is it need to develope this method better?????
+    :param point:
+    :param i1:
+    :param kwargs:
+    :return:
+    '''
+    radius = kwargs.get('r', 0.7)
+    ns = kwargs.get('ns', 3)
+    b = list((np.linspace(-radius, radius, ns)))
+    operator = Rz(ns*d_hor_angle*b[i1]).dot(Ry(ns*d_ver_angle*(r-b[i1])))
+    pp_ = [i.dot(operator) for i in icos]
+    for i in icos:
+        pp_.append(i)
+        # show_points(pp_)
+    # operator = []
+    if isinstance(point, (np.ndarray)):
+        return point.dot(operator)
+    return [i.dot(operator) for i in point]
+
+
 
 def point_to_angles(point):
     '''

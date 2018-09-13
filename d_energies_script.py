@@ -1,6 +1,5 @@
 #!bin/bash
 import sys, os, subprocess, shutil, tempfile
-import numpy as np
 from icosahedron_with_rotate import *
 from penta_with_rotate import *
 from itertools import product
@@ -8,9 +7,14 @@ from mol2_chain import atoms_and_bonds, mol2_to_notation, xyz_names_bonds, bonds
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
-
 import numpy.random
-from numpy import arccos, arctan
+from numpy import arccos, arctan, arctan2
+
+def cartesian_to_spherical(vector):
+    r_xy = vector[0] ** 2 + vector[1] ** 2
+    theta = arctan2(vector[1], vector[0])
+    phi = arctan2(vector[2], r_xy ** 0.5)
+    return theta, phi
 
 def smth_before_script():
     atom_name = "Caffein"
@@ -93,6 +97,14 @@ def smth_before_script():
             # print(np.linalg.norm(coeffs))
         shutil.rmtree(tmpdir)
 
+def graph_ico_on_2d():
+    for i in icos:
+        theta, phi = cartesian_to_spherical(i)
+        plt.scatter(theta, phi)
+    plt.xlim(-pi, pi)
+    plt.ylim(-pi/2, pi/2)
+    plt.show()
+
 
 def graphic_errors():
     # fig = plt.figure()
@@ -110,8 +122,7 @@ def graphic_errors():
             x /= r
             y /= r
             z /= r
-            theta = arccos(z)
-            phi = arctan(y/x)
+            theta, phi = cartesian_to_spherical(np.array([x,y,z]))
             cur_err = get_error_of_point(np.array([x, y, z]), method=method, n_y=n_y, n_z=n_z)
             sc = ax1.scatter(theta, phi, c=cur_err, cmap=color_map, vmin=0, vmax=0.3)
             average_error += cur_err/n
@@ -123,9 +134,8 @@ def graphic_errors():
 def graphic_first_ico():
     for j in product(range(9), repeat=2):
         icos_ = rotate_by_basis(icos, j[0], j[1])
-        for i in icos_:
-            theta = arccos(i[2])
-            phi = arctan(i[1]/i[0])
+        for num, i in enumerate(icos_):
+            theta, phi = cartesian_to_spherical(i)
             plt.scatter(theta, phi)
     plt.show()
 
@@ -147,11 +157,78 @@ def graphic_ten_ico():
             plt.scatter(theta, phi)
     plt.show()
 
+def graphic_first_ico_color_by_num(n_y=9, n_z=9, **kwargs):
+    color_map = dict(enumerate(["r", "g", "b", "peachpuff", "fuchsia", 'c', 'm', 'y', 'k', 'burlywood', 'chartreuse',
+                                'olive', 'maroon', 'peru', 'sienna', 'seagreen', 'hotpink', 'lime', 'salmon', 'gray']))
+    for j in product(range(n_y), range(n_z)):
+        icos_ = rotate_by_basis(icos, j[0], j[1], n_y=n_y, n_z=n_z, kwargs=kwargs)
+        for num, i in enumerate(icos_):
+            theta, phi = cartesian_to_spherical(i)
+            plt.scatter(theta, phi, c=color_map[num%20])
+    plt.show()
+
+def graphic_incline_ico_color_by_num(n_y=9, n_z=9,**kwargs):
+    color_map = dict(enumerate(["r", "g", "b", "peachpuff", "fuchsia", 'c', 'm', 'y', 'k', 'burlywood', 'chartreuse',
+                                'olive', 'maroon', 'peru', 'sienna', 'seagreen', 'hotpink', 'lime', 'salmon', 'gray']))
+    for j in product(range(n_y), range(n_z)):
+        icos_ = rotate_non_perpendicular(icos, j[0], j[1], n_y=n_y, n_z=n_z, **kwargs)
+        for num, i in enumerate(icos_):
+            theta, phi = cartesian_to_spherical(i)
+            plt.scatter(theta, phi, c=color_map[num%20])
+    plt.show()
+
+def graphic_ten_ico_color_by_num(r=0.6):
+    color_map = dict(enumerate(["r", "g", "b", "peachpuff", "fuchsia", 'c', 'm', 'y', 'k', 'burlywood', 'chartreuse',
+                                'olive', 'maroon', 'peru', 'sienna', 'seagreen', 'hotpink', 'lime', 'salmon', 'gray']))
+    # for j in product(range(n_y), range(n_z)):
+    for j in range(9):
+        icos_ = rotate_ten_vars(icos, j, r=r)
+        for num, i in enumerate(icos_):
+            theta, phi = cartesian_to_spherical(i)
+            plt.scatter(theta, phi, c=color_map[num%20])
+    plt.show()
+
+def graphic_vars_ico_color_by_num(r=0.6, ns=3):
+    color_map = dict(enumerate(["r", "g", "b", "peachpuff", "fuchsia", 'c', 'm', 'y', 'k', 'burlywood', 'chartreuse',
+                                'olive', 'maroon', 'peru', 'sienna', 'seagreen', 'hotpink', 'lime', 'salmon', 'gray']))
+    # for j in product(range(n_y), range(n_z)):
+    for j in range(9):
+        icos_ = rotate_radius_vars(icos, j, r=r, ns=ns)
+        for num, i in enumerate(icos_):
+            theta, phi = cartesian_to_spherical(i)
+            plt.scatter(theta, phi, c=color_map[num%20])
+    plt.show()
+
+def graphic_first_ico_color_by_rotate():
+    for j in product(range(9), repeat=2):
+        icos_ = rotate_by_basis(icos, j[0], j[1])
+        for num, i in enumerate(icos_):
+            theta, phi = cartesian_to_spherical(i)
+            plt.scatter(theta, phi)
+    plt.show()
 
 if __name__ == '__main__':
-    graphic_errors()
+    # graph_ico_on_2d()
+    # graphic_errors()
 
-    # graphic_first_ico()
+    # graphic_first_ico_color_by_num(n_y=9, n_z=9)
+    # graphic_first_ico_color_by_num(n_y=4, n_z=7)
+    # graphic_first_ico_color_by_num(n_y=4, n_z=4)
+    # graphic_first_ico_color_by_num(n_y=20, n_z=20)
+    # graphic_incline_ico_color_by_num(n_y=5, n_z=5)
+    # graphic_incline_ico_color_by_num(n_y=20, n_z=20, fr=1,sr=7)
+    # graphic_incline_ico_color_by_num(n_y=20, n_z=20, fr=1,sr=8)
+    # graphic_incline_ico_color_by_num(n_y=20, n_z=20, fr=1,sr=9)
+    # graphic_incline_ico_color_by_num(n_y=20, n_z=20, fr=1,sr=10)
+
+
+    # graphic_ten_ico_color_by_num(0.5)
+    # graphic_ten_ico_color_by_num(0.75)
+    # graphic_ten_ico_color_by_num(0.9)
+    # graphic_ten_ico_color_by_num(0.8)
+    # graphic_ten_ico_color_by_num(0.65)
+    # graphic_vars_ico_color_by_num(0.75, 10)
+    # graphic_vars_ico_color_by_num(0.75, 200)
     # graphic_incline_ico()
 
     # graphic_ten_ico()
