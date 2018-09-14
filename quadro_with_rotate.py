@@ -1,0 +1,153 @@
+from math import acos, sin, pi, cos, atan, asin
+import matplotlib.pyplot as plt
+import numpy as np
+from numpy import arctan2
+from itertools import product
+from copy import deepcopy
+from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
+
+
+
+def cartesian_to_spherical(vector):
+    r_xy = vector[0] ** 2 + vector[1] ** 2
+    theta = arctan2(vector[1], vector[0])
+    phi = arctan2(vector[2], r_xy ** 0.5)
+    return theta, phi
+
+
+def cube(n=3):
+    side = 2./(n)
+    divs = [np.array([1, -1, 1]), np.array([1,1,1])]
+    divs += [divs[0]+(divs[1]-divs[0])*i/(n) for i in range(1,n)]
+    for ix in range(n+1):
+        divs += [np.array([divs[ix][0]-side*j, divs[ix][1], divs[ix][2]]) for j in range(1,n+1)]
+    for ix in range((n+1)**2):
+        divs += [np.array([divs[ix][0], divs[ix][1], divs[ix][2]-2])]
+    for ix in range(3*n+1):
+        divs += [np.array([divs[ix][0], divs[ix][1], divs[ix][2]-side*j]) for j in range(1,n)]
+    for ix in (range(2 * (n + 1) ** 2 + 2 * (n - 1), 2 * (n + 1) ** 2 + 2 * (n - 1) + (n - 1) ** 2)):
+        divs += [np.array([divs[ix][0] - 2, divs[ix][1], divs[ix][2]])]
+    return divs
+
+def show_cube(n=3):
+    ds = cube(n=n)
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for num, i in enumerate(ds):
+        ax.scatter(i[0], i[1], i[2])
+        ax.text(i[0], i[1], i[2], str(num))
+    plt.show()
+
+def plot_cube(cube_definition, n=3):
+    cube_definition_array = [
+        np.array(list(item))
+        for item in cube_definition
+    ]
+
+    points = []
+    points += cube_definition_array
+    vectors = [
+        cube_definition_array[1] - cube_definition_array[0],
+        cube_definition_array[2] - cube_definition_array[0],
+        cube_definition_array[3] - cube_definition_array[0]
+    ]
+
+    points += [cube_definition_array[0] + vectors[0] + vectors[1]]
+    points += [cube_definition_array[0] + vectors[0] + vectors[2]]
+    points += [cube_definition_array[0] + vectors[1] + vectors[2]]
+    points += [cube_definition_array[0] + vectors[0] + vectors[1] + vectors[2]]
+
+    points = np.array(points)
+
+    edges = [
+        [points[0], points[3], points[5], points[1]],
+        [points[1], points[5], points[7], points[4]],
+        [points[4], points[2], points[6], points[7]],
+        [points[2], points[6], points[3], points[0]],
+        [points[0], points[2], points[4], points[1]],
+        [points[3], points[6], points[7], points[5]]
+    ]
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ds = cube(n=n)
+    for num, i in enumerate(ds):
+        ax.scatter(i[0], i[1], i[2])
+        # ax.text(i[0], i[1], i[2], str(num))
+    faces = Poly3DCollection(edges, linewidths=1, edgecolors='k')
+    faces.set_facecolor((0,0,1,0.1))
+    ax.add_collection3d(faces)
+    ax.set_aspect('equal')
+    plt.show()
+
+def show_with_surface(n=3):
+    cube_definition = [
+        (-1,-1,-1), (-1,1,-1), (1,-1,-1), (-1,-1,1)
+    ]
+    plot_cube(cube_definition, n=n)
+
+def spherical_cube(n=3):
+    original = cube(n=n)
+    for i in range(len(original)):
+        original[i] = original[i]/np.linalg.norm(original[i])
+    return original
+
+
+scube = spherical_cube()
+d_min = np.linalg.norm(scube[0]-scube[2])
+
+
+def show_spherical_cube(n=3):
+    ds = spherical_cube(n=n)
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for num, i in enumerate(ds):
+        ax.scatter(i[0], i[1], i[2])
+        ax.text(i[0], i[1], i[2], str(num))
+    plt.show()
+
+
+def get_spherical_cube_in_2d(n=3):
+    planar = []
+    for i in spherical_cube(n=n):
+        planar.append(cartesian_to_spherical(i))
+    return planar
+
+def show_planar_cube(n=3):
+    for i in get_spherical_cube_in_2d(n=n):
+        plt.scatter(i[0], i[1])
+    plt.xlim(-pi, pi)
+    plt.ylim(-pi/2, pi/2)
+    plt.show()
+
+def find_section(p0, p1, n=3, eps=0.005):
+    '''
+        :param p0: this point has already basis
+        :param p1: not important basis of p1
+        :return: section of p0 atom in which there's p1
+        '''
+    vec = p1 - p0
+    vec = vec / np.linalg.norm(vec)
+    ds = 1
+    i = -1
+    while ds > d_min/2+eps:
+        i += 1
+        ds = np.linalg.norm(vec - scube[i])
+    return i
+
+# print(find_section(np.zeros(3), scube[45]))
+
+#################Checkers#############
+
+# def get_reversed_section_and_basis(s, b0, method='first', **kwargs):
+#     if method == 'first':
+#         return find_basis(np.zeros(3), rotate_by_basis(icos[s], b0[0], b0[1], **kwargs), **kwargs)
+#     elif method == 'ten':
+#         return find_basis(np.zeros(3), rotate_ten_vars(icos[s], b0, **kwargs), **kwargs)
+#     return find_basis(np.zeros(3), rotate_non_perpendicular(icos[s], b0[0], b0[1], **kwargs), **kwargs)
+#
+
+if __name__ == '__main__':
+
+    pass
