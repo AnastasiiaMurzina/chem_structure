@@ -80,11 +80,9 @@ def mol2_to_notation(info_from_file, **kwargs):
         connected = [i[0] for i in bonds2[key]]
         notation.update({key: [list([[i, find_section(cur_p, atoms[i].position())]
                                          for i in connected])]})
-        notation.update({key: [list([[i, find_section(cur_p, atoms[i].position())]
-                                     for i in connected])]})
     for key, item in bonds.items():
         for i in range(len(item)):
-            bonds[key][i].insert(1, np.linalg.norm(atoms[key].position()-atoms[item[i][0]].position()))
+            bonds[key][i].insert(1, round(np.linalg.norm(atoms[key].position()-atoms[item[i][0]].position()), 3))
     return notation, bonds
 
 
@@ -188,7 +186,7 @@ if __name__ == '__main__':
     xyz_names_bonds()- function
     '''
 
-    name = 'Cocaine'
+    name = 'Caffein'
     # bs, ass = xyz_names_bonds(name + '.mol2')
     atoms_info = atoms_and_bonds(name + '.mol2')
     ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'))
