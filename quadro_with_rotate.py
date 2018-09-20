@@ -94,7 +94,7 @@ def spherical_cube(n=3):
     return original
 
 
-scube = spherical_cube()
+scube = spherical_cube(3)
 d_min = np.linalg.norm(scube[0]-scube[2])
 
 
@@ -121,7 +121,7 @@ def show_planar_cube(n=3):
     plt.ylim(-pi/2, pi/2)
     plt.show()
 
-def find_section(p0, p1, n=3, eps=0.005):
+def find_section(p1 ,p0=np.zeros(3), n=3, eps=0.005):
     '''
         :param p0: this point has already basis
         :param p1: not important basis of p1
@@ -131,12 +131,41 @@ def find_section(p0, p1, n=3, eps=0.005):
     vec = vec / np.linalg.norm(vec)
     ds = 1
     i = -1
+    scube_l = spherical_cube(n=n)
     while ds > d_min/2+eps:
+        if i >= len(scube_l)-1:
+            i=-1
+            eps*=1.1
         i += 1
-        ds = np.linalg.norm(vec - scube[i])
+        ds = np.linalg.norm(vec - scube_l[i]) # here warning for use parameter n
     return i
 
-# print(find_section(np.zeros(3), scube[45]))
+def sc_err(n=6):
+    fig = plt.figure()
+    ax1 = plt.subplot(111)
+    color_map = plt.get_cmap('cool')
+    average_error, mx_error = 0,0
+    nit = 8000
+    for _ in range(nit):
+        x, y, z = np.random.normal(size=3)
+        r = (x**2+y**2+z**2)**0.5
+        x /= r
+        y /= r
+        z /= r
+        point = np.array([x, y, z])
+        theta, phi = cartesian_to_spherical(np.array([x, y, z]))
+        cur_err = np.linalg.norm(scube[find_section(point, n=n)]-point) # may be create cubes with parameter n
+        d_err = mx_error - average_error
+        sc = ax1.scatter(theta, phi, c=cur_err, cmap=color_map, vmin=average_error-d_err/2, vmax=average_error+d_err/2)
+        average_error += cur_err / nit
+        mx_error = max(mx_error, cur_err)
+    ax1.set_title('quadro, n=' + str(n))
+    cb = fig.colorbar(sc, orientation='horizontal', drawedges=False)
+    cb.set_label(
+        'Discrete errors, average=' + str(format(average_error, '.5g')) + ', Maximal = ' + str(format(mx_error, '.5g')),
+        fontsize=14)
+    plt.show()
+
 
 #################Checkers#############
 
