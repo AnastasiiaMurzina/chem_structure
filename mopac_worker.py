@@ -43,6 +43,43 @@ def generateInputFile(opts, mol_file_positions, mol_file_names):
 
     return output
 
+def writeInputFileFromXYZ(opts, xyz_file, mop_file):
+    title = opts['Title']
+    calculate = opts['Calculation Type']
+    theory = opts['Theory']
+    multiplicity = opts['Multiplicity']
+    charge = opts['Charge']
+
+    output = ''
+
+    multStr = greece_numericals.get(multiplicity, 'SINGLET')
+
+    # Calculation type:
+    calcStr = calculations[calculate]
+
+    # Charge, mult, calc type, theory:
+    if opts.get('TS'):
+        output += ' AUX LARGE CHARGE=%d %s %s %s %s\n' %\
+        (charge, multStr, calcStr, theory, opts['TS'])
+    else:
+        output += ' AUX LARGE CHARGE=%d %s %s %s\n' %\
+        (charge, multStr, calcStr, theory)
+    output += '%s\n\n' % title
+    with open(xyz_file, 'r') as f:
+        n = int(f.readline())
+        f.readline()
+        lines = [f.readline().split() for _ in range(n)]
+
+    if calculate == 'Single Point':
+        for line in lines:
+            output += '  {0}\t{1}\t0\t{2}\t0\t{3}\t0\n'.format(line[0], line[1], line[2], line[3])
+    else:
+        for line in lines:
+            output += ' {0}\t{1}\t1\t{2}\t1\t{3}\t1\n'.format(line[0], line[1], line[2], line[3])
+    with open(mop_file, 'w') as f:
+        f.write(output)
+    return output
+
 def writeInputFile(opt, positions, names, file_name):
     with open(file_name, 'w') as f:
         f.write(generateInputFile(opt, positions, names))
@@ -70,6 +107,31 @@ def mopacOut_to_xyz(mopac_file, outXYZ_file):
             f1.write('{}\t{}\t{}\t{}\n'.format(line[1], line[2], line[3], line[4]))
     return energy
 
+def mopacOut_to_xyz_with_energy(mopac_file, outXYZ_file):
+    try:
+        with open(mopac_file+'.arc', 'r') as f:
+            for _ in range(8):
+                f.readline()
+            info = f.readline().split()
+            count = int(info[-2])
+            formula = (info[:-3])
+            for _ in range(11):
+                f.readline()
+            energy = float(f.readline().split()[-2])
+    except:
+        return 0
+    with open(mopac_file + '.out', 'r') as f:
+        next(l for l in f if 'CARTESIAN COORDINATES' in l)
+        for _ in range(3):
+            next(f)
+        coords = [next(f) for _ in range(count)]
+    with open(outXYZ_file, 'w') as f1:
+        f1.write(str(count)+'\n')
+        f1.write(str(energy)+'\n')
+        for i in coords:
+            line = i.split()
+            f1.write('{}\t{}\t{}\t{}\n'.format(line[1], line[2], line[3], line[4]))
+    return energy
 
 def get_energy(mopac_file):
     with open(mopac_file, 'r') as f:
