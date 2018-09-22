@@ -78,11 +78,11 @@ def mol2_to_notation(info_from_file, **kwargs):
     for key, item in atoms.items():
         cur_p = positions_copy.pop(key).position()
         connected = [i[0] for i in bonds2[key]]
-        notation.update({key: [list([[i, find_section(cur_p, atoms[i].position())]
-                                         for i in connected])]})
+        notation.update({key: [list([i, find_section(cur_p, atoms[i].position())]
+                                         for i in connected)]})
     for key, item in bonds.items():
         for i in range(len(item)):
-            bonds[key][i].insert(1, round(np.linalg.norm(atoms[key].position()-atoms[item[i][0]].position()), 3))
+            bonds[key][i].insert(1, round(np.linalg.norm(atoms[key].position()-atoms[item[i][0]].position()), 1))
     return notation, bonds
 
 
@@ -102,14 +102,13 @@ def dimensional_structure(notation, **kwargs):
     while len(p) != 0:
         cur_key, bonds = p.pop(0)
         for i in bonds:  # build bonds for cur_key atom
-            # print(i)
-            # return
             if not (i[0] in dim_structure):  # if we don't have position:
                 coord = scube[i[1]]*(lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
 
                 dim_structure.update({i[0]: coord})
                 poper = bonds_copy.pop(i[0])
                 poper.insert(0, i[0])
+                poper[1].pop(0)
                 p.append(poper)
     return dim_structure
 
