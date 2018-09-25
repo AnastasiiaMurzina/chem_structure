@@ -92,7 +92,7 @@ def dimensional_structure(notation, **kwargs):
     with length
     :return: xyz-info
     '''
-    bonds_l, lengths = notation
+    bonds_l, lengths = copy.deepcopy(notation)
     first_atom = min(bonds_l.keys())
     dim_structure = {first_atom: np.array([0, 0, 0])}#, np.array([0, 0])]}
     p = bonds_l[first_atom]
