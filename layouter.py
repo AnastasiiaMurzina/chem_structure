@@ -16,7 +16,7 @@ def dimensional_structure(notation, **kwargs):
     with length
     :return: xyz-info
     '''
-    bonds_l, lengths = copy.deepcopy(notation)
+    bonds_l, lengths = copy.deepcopy(notation) #warning - it was error in other dim_structure builders
     first_atom = min(bonds_l.keys())
     dim_structure = {first_atom: np.array([0, 0, 0])}#, np.array([0, 0])]}
     p = bonds_l[first_atom]
@@ -28,6 +28,7 @@ def dimensional_structure(notation, **kwargs):
         # print(cur_key, bonds)
         for i in bonds:  # build bonds f    or cur_key atom
             if not (i[0] in dim_structure):  # if we don't have position:
+                # print((lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]))
                 coord = scube[i[1]]*(lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
                 dim_structure.update({i[0]: coord})
                 poper = bonds_copy.pop(i[0])
@@ -75,12 +76,18 @@ def dimensional_structure(notation, **kwargs):
                 # print(dim_structure[i[0]])
     return dim_structure
 
-def relaxing(notation, dim_structure):
+def relaxing(notation, lengths, dim_structure):
     print(notation)
     print(dim_structure)
+    forces = {}
     for i, j in notation.items():
-        print(i)
-        print(j)
+        # print(i)
+        for k in j[0]:
+            # print(k)
+            delta_length = np.linalg.norm(dim_structure[k[0]]-(dim_structure[i]+scube[k[1]]*(lengths.get(tuple([i, k[0]]), lengths.get(tuple([k[0], i])))[0])))
+            delta_psi, delta_phi = 0, 0 #TODO
+            if (delta_length) > 0.1 and i < k[0]:
+                print(i, k[0], delta_length, lengths.get(tuple([i, k[0]]), lengths.get(tuple([k[0], i])))[1])
 
     return 0
 
@@ -96,6 +103,6 @@ if __name__ == '__main__':
     print(ln)
     paired = bonds_of_paired(ln[1])
     dim_structure = dimensional_structure([ln[0], paired])
-    relaxing(ln[0], dim_structure)
+    relaxing(ln[0], paired, dim_structure)
     # print(dim_structure)
     write_mol2_file('My_' + name + '_' + 'q.mol2', atoms_info, dim_structure, bonds=paired)

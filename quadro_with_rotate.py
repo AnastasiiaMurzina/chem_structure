@@ -94,8 +94,37 @@ def spherical_cube(n=3):
     return original
 
 
+def find_section(p1 ,p0=np.zeros(3), n=3, eps=0.005, get_error=False):
+    '''
+        :param p0: this point has already basis
+        :param p1: not important basis of p1
+        :return: section of p0 atom in which there's p1
+        '''
+    vec = p1 - p0
+    vec = vec / np.linalg.norm(vec)
+    ds = 1
+    i = -1
+    scube_l = spherical_cube(n=n)
+    while ds > d_min/2+eps:
+        if i >= len(scube_l)-1:
+            i=-1
+            eps*=1.1
+        i += 1
+        ds = np.linalg.norm(vec - scube_l[i]) # here warning for use parameter n
+    if get_error: return i, ds
+    return i
+
+
 scube = spherical_cube(3)
 d_min = np.linalg.norm(scube[0]-scube[2])
+
+def anti_scube(n=3):
+    scube = spherical_cube(n)
+    antis = {}
+    for i, j in enumerate(scube):
+        s, e = find_section(-j)
+        antis.update({i: s})
+    return antis
 
 
 def show_spherical_cube(n=3):
@@ -114,6 +143,7 @@ def get_spherical_cube_in_2d(n=3):
         planar.append(cartesian_to_spherical(i))
     return planar
 
+
 def show_planar_cube(n=3):
     for i in get_spherical_cube_in_2d(n=n):
         plt.scatter(i[0], i[1])
@@ -121,24 +151,6 @@ def show_planar_cube(n=3):
     plt.ylim(-pi/2, pi/2)
     plt.show()
 
-def find_section(p1 ,p0=np.zeros(3), n=3, eps=0.005):
-    '''
-        :param p0: this point has already basis
-        :param p1: not important basis of p1
-        :return: section of p0 atom in which there's p1
-        '''
-    vec = p1 - p0
-    vec = vec / np.linalg.norm(vec)
-    ds = 1
-    i = -1
-    scube_l = spherical_cube(n=n)
-    while ds > d_min/2+eps:
-        if i >= len(scube_l)-1:
-            i=-1
-            eps*=1.1
-        i += 1
-        ds = np.linalg.norm(vec - scube_l[i]) # here warning for use parameter n
-    return i
 
 def sc_err(n=6):
     fig = plt.figure()
@@ -178,5 +190,5 @@ def sc_err(n=6):
 #
 
 if __name__ == '__main__':
-
+    anti_scube()
     pass
