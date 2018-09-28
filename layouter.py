@@ -1,7 +1,7 @@
 import copy
 import numpy as np
 from mol2_chain_q import atoms_and_bonds,  bonds_of_paired, mol2_to_notation, dimensional_structure, xyz_names_bonds, write_mol2_file
-from quadro_with_rotate import scube, find_section
+from quadro_with_rotate import scube, find_section, anti_scube
 from numpy import arctan2, pi
 
 def cartesian_to_spherical(vector):
@@ -81,12 +81,10 @@ def relaxing(notation, lengths, dim_structure):
     print(dim_structure)
     forces = {}
     for i, j in notation.items():
-        # print(i)
-        for k in j[0]:
-            # print(k)
+        for k in j[0]:#i, k[0] elements considered
             delta_length = np.linalg.norm(dim_structure[k[0]]-(dim_structure[i]+scube[k[1]]*(lengths.get(tuple([i, k[0]]), lengths.get(tuple([k[0], i])))[0])))
             delta_psi, delta_phi = 0, 0 #TODO
-            if (delta_length) > 0.1 and i < k[0]:
+            if (delta_length) > 0.1:# and i < k[0]:
                 print(i, k[0], delta_length, lengths.get(tuple([i, k[0]]), lengths.get(tuple([k[0], i])))[1])
 
     return 0
@@ -95,6 +93,7 @@ def relaxing(notation, lengths, dim_structure):
 if __name__ == '__main__':
     file_name = './tmp/Phenol_opt'
     name = 'Phenol_opt'
+    print(anti_scube())
 
     # bs, ass = xyz_names_bonds(name + '.mol2')
 

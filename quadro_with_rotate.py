@@ -94,7 +94,11 @@ def spherical_cube(n=3):
     return original
 
 
-def find_section(p1 ,p0=np.zeros(3), n=3, eps=0.005, get_error=False):
+scube = spherical_cube(3)
+d_min = np.linalg.norm(scube[0]-scube[2])
+
+
+def find_section_old(p1, p0=np.zeros(3), n=3, eps=0.05, get_error=False):
     '''
         :param p0: this point has already basis
         :param p1: not important basis of p1
@@ -108,22 +112,37 @@ def find_section(p1 ,p0=np.zeros(3), n=3, eps=0.005, get_error=False):
     while ds > d_min/2+eps:
         if i >= len(scube_l)-1:
             i=-1
-            eps*=1.1
+            # eps*=1.1
         i += 1
         ds = np.linalg.norm(vec - scube_l[i]) # here warning for use parameter n
     if get_error: return i, ds
     return i
 
+def find_section(p1, p0=np.zeros(3), n=3, eps=0.05, get_error=False):
+    '''
+        :param p0: this point has already basis
+        :param p1: not important basis of p1
+        :return: section of p0 atom in which there's p1
+        '''
+    vec = p1 - p0
+    vec = vec / np.linalg.norm(vec)
+    ds = []
+    scube_l = spherical_cube(n=n)
+    for i, j in enumerate(scube_l):
+        r = np.linalg.norm(vec - j)
+        if r < d_min*2:
+           ds.append([r, i])
+    d, ix = sorted(ds)[0]
+    if get_error: return ix, d
+    return ix
 
-scube = spherical_cube(3)
-d_min = np.linalg.norm(scube[0]-scube[2])
+
 
 def anti_scube(n=3):
     scube = spherical_cube(n)
     antis = {}
     for i, j in enumerate(scube):
-        s, e = find_section(-j)
-        antis.update({i: s})
+        antis.update({i: find_section(-j)})
     return antis
 
 
