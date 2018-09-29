@@ -6,7 +6,7 @@ from itertools import product
 from copy import deepcopy
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
-
+from colors_from_plots import cnames
 
 
 def cartesian_to_spherical(vector):
@@ -95,6 +95,10 @@ def spherical_cube(n=3):
 
 
 scube = spherical_cube(3)
+colors_sc = {}
+name = [key for key in cnames.keys()]
+for i in range(len(scube)):
+    colors_sc.update({i: name[i]})
 d_min = np.linalg.norm(scube[0]-scube[2])
 
 
@@ -197,6 +201,40 @@ def sc_err(n=6):
         fontsize=14)
     plt.show()
 
+def diagram_divide(n=3):
+    for _ in range(10000):
+        x, y, z = np.random.rand(3)
+        r = np.linalg.norm(np.array([x, y, z]))
+        x /= r
+        y /= r
+        z /= r
+        x = -x if np.random.rand() < 0.5 else x # one fourth without these lines
+        y = -y if np.random.rand() < 0.5 else y
+        z = -z if np.random.rand() < 0.5 else z
+        vec = np.array([x, y, z])
+        ix = find_section(vec, n=n)
+        angles = cartesian_to_spherical(vec)
+        plt.scatter(angles[0], angles[1], c=colors_sc[ix])
+    plt.show()
+
+
+def spherical_diagram_divide(n=3):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for _ in range(10000):
+        x, y, z = np.random.rand(3)
+        r = np.linalg.norm(np.array([x, y, z]))
+        x /= r
+        y /= r
+        z /= r
+        x = -x if np.random.rand() < 0.5 else x # one fourth without these lines
+        y = -y if np.random.rand() < 0.5 else y
+        z = -z if np.random.rand() < 0.5 else z
+        vec = np.array([x, y, z])
+        ix = find_section(vec, n=n)
+        ax.scatter(x,y,z, c=colors_sc[ix])
+    plt.show()
+
 
 #################Checkers#############
 
@@ -209,5 +247,7 @@ def sc_err(n=6):
 #
 
 if __name__ == '__main__':
-    anti_scube()
+    # anti_scube()
+    # diagram_divide()
+    # spherical_diagram_divide()
     pass
