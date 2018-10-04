@@ -10,6 +10,24 @@ def cartesian_to_spherical(vector):
     phi = arctan2(vector[2], r_xy ** 0.5)
     return theta, phi
 
+def check(notation, dim_structure_reduced, eps = 0.01):
+    forces = 1
+    forces_next = 0
+    while abs(forces_next - forces) > 0.0001:
+        forces_next, forces = 0, forces_next
+        for atom in dim_structure_reduced:
+            force = np.array([0, 0, 0])
+            for bond in notation[0][atom][0]:
+                if bond[0] in dim_structure_reduced:
+                    length = (notation[1].get(tuple([atom, bond[0]]), notation[1].get(tuple([bond[0], atom])))[0])
+                    force = force + dim_structure_reduced[bond[0]]-scube[bond[1]]*length-dim_structure_reduced[atom]
+            n_f = np.linalg.norm(force)
+            forces_next += n_f
+            # if n_f > 0.1:
+            dim_structure_reduced[atom] = dim_structure_reduced[atom] + eps*force
+        # print(atom, forces_next)
+    return dim_structure_reduced
+
 def dimensional_structure(notation, **kwargs):
     '''
     :param notation: Notation with first atom with unique basis for every bond
@@ -25,6 +43,8 @@ def dimensional_structure(notation, **kwargs):
     p = [p]
     while len(p) != 0:
         cur_key, bonds = p.pop(0)
+        dim_structure = check(notation, dim_structure)
+
         # print(cur_key, bonds)
         for i in bonds:  # build bonds f    or cur_key atom
             if not (i[0] in dim_structure):  # if we don't have position:
@@ -90,9 +110,12 @@ def relaxing(notation, lengths, dim_structure):
     return 0
 
 
+
 if __name__ == '__main__':
-    file_name = './tmp/Phenol_opt'
-    name = 'Phenol_opt'
+    # name_sh = 'Caffein'
+    name_sh = 'Phenol'
+    file_name = './tmp/'+name_sh+'_opt'
+    name = name_sh+'_opt'
     print(anti_scube())
 
     # bs, ass = xyz_names_bonds(name + '.mol2')

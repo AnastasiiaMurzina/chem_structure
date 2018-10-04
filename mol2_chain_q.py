@@ -185,7 +185,7 @@ if __name__ == '__main__':
     xyz_names_bonds()- function
     '''
 
-    name = 'Caffein'
+    name = 'Phenol'
     # bs, ass = xyz_names_bonds(name + '.mol2')
     atoms_info = atoms_and_bonds(name + '.mol2')
     ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'))
