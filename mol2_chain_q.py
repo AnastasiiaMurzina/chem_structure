@@ -1,14 +1,10 @@
 import numpy as np
 import copy
-from quadro_with_rotate import spherical_cube, find_section
+from quadro_with_rotate_class import Spherical_divider
 from mol2_worker import xyz_names, xyz_names_bonds, Atom, atoms_and_bonds, Bond
 from mopac_worker import get_energy_of_mol2
 # from many_mols import molecular_divider, get_notation_many_mols, insert_zero_bonds
 
-eps_length = 0.001
-scube = spherical_cube(1)
-
-###########################Builder structure if possile else return fail########################
 def prepare_bonds(bonds):
     for i, j in enumerate(bonds):
         if j[0] > j[1]:
@@ -64,82 +60,6 @@ def to_two_ways_bond2(one_way_bonds, with_attr=False):
     return two_ways
 
 
-def mol2_to_notation(info_from_file, n=3, **kwargs):
-    '''
-    :param info_from_file: read_from_file tuple
-    WARNING: may be keep Atoms without coordinates and Bonds with sections
-    :return: chain in dictionary notation (see above)
-    '''
-    bonds, atoms = info_from_file
-    positions_copy = copy.deepcopy(atoms)
-    notation = {}
-    bonds = bonds_to_one_way_dict(prepare_bonds(bonds))
-    bonds2 = to_two_ways_bond2(bonds, with_attr=True)
-    for key, item in atoms.items():
-        cur_p = positions_copy.pop(key).position()
-        connected = [i[0] for i in bonds2[key]]
-        notation.update({key: [list([i, find_section(cur_p, atoms[i].position(), n=n)]
-                                         for i in connected)]})
-    for key, item in bonds.items():
-        for i in range(len(item)):
-            bonds[key][i].insert(1, round(np.linalg.norm(atoms[key].position()-atoms[item[i][0]].position()), 1))
-    return notation, bonds
-
-
-def dimensional_structure(notation, **kwargs):
-    '''
-    :param notation: Notation with first atom with unique basis for every bond
-    with length
-    :return: xyz-info
-    '''
-    bonds_l, lengths = notation
-    first_atom = min(bonds_l.keys())
-    dim_structure = {first_atom: np.array([0, 0, 0])}#, np.array([0, 0])]}
-    p = bonds_l[first_atom]
-    bonds_copy = copy.deepcopy(bonds_l)
-    p.insert(0, first_atom)  # p[0] - current atom, p[1] - bonds, p[2] - basis of p[0] atom
-    p = [p]
-    while len(p) != 0:
-        cur_key, bonds = p.pop(0)
-        for i in bonds:  # build bonds for cur_key atom
-            if not (i[0] in dim_structure):  # if we don't have position:
-                coord = scube[i[1]]*(lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
-
-                dim_structure.update({i[0]: coord})
-                poper = bonds_copy.pop(i[0])
-                poper.insert(0, i[0])
-                poper[1].pop(0)
-                p.append(poper)
-    return dim_structure
-
-
-def write_mol2_file(file_name, atoms, positions, bonds):
-    '''
-    :param file_name:
-    :param names: chemical elements names
-    :param positions: xyz - coordinates
-    :param bonds: one way bonds
-    :return: None, void write function
-    '''
-    with open(file_name, 'w') as f1:
-        f1.write('@<TRIPOS>MOLECULE\n')
-        f1.write('some info\n')
-        f1.write(str(len(atoms))+'\t'+str(len(bonds))+'\n\n')
-        f1.write('@<TRIPOS>ATOM\n')
-        for num, key in atoms.items():
-            f1.write("\t{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\n".format(num, key.name, str(positions[num][0]),
-                                                                            str(positions[num][1]), str(positions[num][2]),
-                                                                            key.name_i, key.i1, key.i2, key.i3))
-        f1.write('@<TRIPOS>BOND\n')
-
-        for k, num in enumerate(bonds.items()):
-            num, i = num
-            # print(i, 't',attrs.get(tuple([i[0], i[1]])), attrs.get(tuple([i[1], i[0]])))
-            f1.write("\t{0}\t{1}\t{2}\t{3}\n".format(str(k+1), str(num[0]), str(num[1]), str(i[1])))
-
-
-##############################Mol2_preparations###########################################
-
 def to_one_way_bonds(two_way_bonds):
     one_way = []
     for key, item in two_way_bonds.items():
@@ -176,6 +96,30 @@ def to_two_ways_bond(one_way_bonds, with_attr=False):
         else:
             two_ways.update({i[1]: [i[0]]})
     return two_ways
+
+class Notation():
+    def __init__(self, n, info_from_file):
+        self.divider = Spherical_divider(n=n)
+        bonds, self.atoms = info_from_file
+        positions_copy = copy.deepcopy(self.atoms)
+        self.notation = {}
+        self.bonds = bonds_to_one_way_dict(prepare_bonds(bonds))
+        bonds2 = to_two_ways_bond2(self.bonds, with_attr=True)
+        for key, item in self.atoms.items():
+            cur_p = positions_copy.pop(key).position()
+            connected = [i[0] for i in bonds2[key]]
+            self.notation.update({key: [list([i, self.divider.find_section(cur_p, self.atoms[i].position())]
+                                        for i in connected)]})
+        for key, item in self.bonds.items():
+            for i in range(len(item)):
+                self.bonds[key][i].insert(1, round(np.linalg.norm(self.atoms[key].position() - self.atoms[item[i][0]].position()), 1))
+
+
+
+
+
+##############################Mol2_preparations###########################################
+
 
 
 
