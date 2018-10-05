@@ -94,7 +94,7 @@ def spherical_cube(n=3):
     return original
 
 
-scube = spherical_cube(3)
+scube = spherical_cube(1)
 colors_sc = {}
 name = [key for key in cnames.keys()]
 for i in range(len(scube)):
@@ -122,7 +122,7 @@ def find_section_old(p1, p0=np.zeros(3), n=3, eps=0.05, get_error=False):
     if get_error: return i, ds
     return i
 
-def find_section(p1, p0=np.zeros(3), n=3, eps=0.05, get_error=False):
+def find_section(p1, p0=np.zeros(3), n=3, get_error=False):
     '''
         :param p0: this point has already basis
         :param p1: not important basis of p1

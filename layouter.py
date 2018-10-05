@@ -1,7 +1,7 @@
 import copy
 import numpy as np
 from mol2_chain_q import atoms_and_bonds,  bonds_of_paired, mol2_to_notation, dimensional_structure, xyz_names_bonds, write_mol2_file
-from quadro_with_rotate import scube, find_section, anti_scube
+from quadro_with_rotate import scube, find_section, anti_scube, spherical_cube
 from numpy import arctan2, pi
 
 def cartesian_to_spherical(vector):
@@ -10,10 +10,11 @@ def cartesian_to_spherical(vector):
     phi = arctan2(vector[2], r_xy ** 0.5)
     return theta, phi
 
-def check(notation, dim_structure_reduced, eps = 0.01):
+def check(notation, dim_structure_reduced, eps = 0.01, n=3):
     forces = 1
     forces_next = 0
-    while abs(forces_next - forces) > 0.0001:
+    scube = spherical_cube(n=n)
+    while abs(forces_next - forces) > eps**3:
         forces_next, forces = 0, forces_next
         for atom in dim_structure_reduced:
             force = np.array([0, 0, 0])
@@ -28,7 +29,7 @@ def check(notation, dim_structure_reduced, eps = 0.01):
         # print(atom, forces_next)
     return dim_structure_reduced
 
-def dimensional_structure(notation, **kwargs):
+def dimensional_structure(notation, n=3, **kwargs):
     '''
     :param notation: Notation with first atom with unique basis for every bond
     with length
@@ -41,10 +42,10 @@ def dimensional_structure(notation, **kwargs):
     bonds_copy = copy.deepcopy(bonds_l)
     p.insert(0, first_atom)  # p[0] - current atom, p[1] - bonds, p[2] - basis of p[0] atom
     p = [p]
+    scube = spherical_cube(n)
     while len(p) != 0:
         cur_key, bonds = p.pop(0)
-        dim_structure = check(notation, dim_structure)
-
+        # dim_structure = check(notation, dim_structure, n=n)
         # print(cur_key, bonds)
         for i in bonds:  # build bonds f    or cur_key atom
             if not (i[0] in dim_structure):  # if we don't have position:
@@ -96,10 +97,11 @@ def dimensional_structure(notation, **kwargs):
                 # print(dim_structure[i[0]])
     return dim_structure
 
-def relaxing(notation, lengths, dim_structure):
+def relaxing(notation, lengths, dim_structure, n=3):
     print(notation)
     print(dim_structure)
     forces = {}
+    scube = spherical_cube(n=n)
     for i, j in notation.items():
         for k in j[0]:#i, k[0] elements considered
             delta_length = np.linalg.norm(dim_structure[k[0]]-(dim_structure[i]+scube[k[1]]*(lengths.get(tuple([i, k[0]]), lengths.get(tuple([k[0], i])))[0])))
@@ -113,18 +115,21 @@ def relaxing(notation, lengths, dim_structure):
 
 if __name__ == '__main__':
     # name_sh = 'Caffein'
-    name_sh = 'Phenol'
+    # name_sh = 'Naphthalene'
+    # name_sh = 'Phenol'
+    name_sh = '4c-Mn-OMe'
     file_name = './tmp/'+name_sh+'_opt'
     name = name_sh+'_opt'
-    print(anti_scube())
+    n_param = 3
+    print(anti_scube(n=n_param))
 
     # bs, ass = xyz_names_bonds(name + '.mol2')
 
     atoms_info = atoms_and_bonds(file_name + '.mol2')
-    ln = mol2_to_notation(xyz_names_bonds(file_name + '.mol2'))
+    ln = mol2_to_notation(xyz_names_bonds(file_name + '.mol2'), n=n_param)
     print(ln)
     paired = bonds_of_paired(ln[1])
-    dim_structure = dimensional_structure([ln[0], paired])
-    relaxing(ln[0], paired, dim_structure)
+    dim_structure = dimensional_structure([ln[0], paired],n=n_param)
+    relaxing(ln[0], paired, dim_structure, n=n_param)
     # print(dim_structure)
     write_mol2_file('My_' + name + '_' + 'q.mol2', atoms_info, dim_structure, bonds=paired)

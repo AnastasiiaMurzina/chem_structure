@@ -6,7 +6,7 @@ from mopac_worker import get_energy_of_mol2
 # from many_mols import molecular_divider, get_notation_many_mols, insert_zero_bonds
 
 eps_length = 0.001
-scube = spherical_cube(3)
+scube = spherical_cube(1)
 
 ###########################Builder structure if possile else return fail########################
 def prepare_bonds(bonds):
@@ -64,7 +64,7 @@ def to_two_ways_bond2(one_way_bonds, with_attr=False):
     return two_ways
 
 
-def mol2_to_notation(info_from_file, **kwargs):
+def mol2_to_notation(info_from_file, n=3, **kwargs):
     '''
     :param info_from_file: read_from_file tuple
     WARNING: may be keep Atoms without coordinates and Bonds with sections
@@ -78,7 +78,7 @@ def mol2_to_notation(info_from_file, **kwargs):
     for key, item in atoms.items():
         cur_p = positions_copy.pop(key).position()
         connected = [i[0] for i in bonds2[key]]
-        notation.update({key: [list([i, find_section(cur_p, atoms[i].position())]
+        notation.update({key: [list([i, find_section(cur_p, atoms[i].position(), n=n)]
                                          for i in connected)]})
     for key, item in bonds.items():
         for i in range(len(item)):
