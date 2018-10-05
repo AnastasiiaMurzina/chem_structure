@@ -29,7 +29,7 @@ def check(notation, dim_structure_reduced, eps = 0.01, n=3):
         # print(atom, forces_next)
     return dim_structure_reduced
 
-def dimensional_structure(notation, n=3, **kwargs):
+def dimensional_structure(notation, n=3, relax=True, **kwargs):
     '''
     :param notation: Notation with first atom with unique basis for every bond
     with length
@@ -45,7 +45,7 @@ def dimensional_structure(notation, n=3, **kwargs):
     scube = spherical_cube(n)
     while len(p) != 0:
         cur_key, bonds = p.pop(0)
-        # dim_structure = check(notation, dim_structure, n=n)
+        if relax: dim_structure = check(notation, dim_structure, n=n)
         # print(cur_key, bonds)
         for i in bonds:  # build bonds f    or cur_key atom
             if not (i[0] in dim_structure):  # if we don't have position:
@@ -118,18 +118,20 @@ if __name__ == '__main__':
     # name_sh = 'Naphthalene'
     # name_sh = 'Phenol'
     name_sh = '4c-Mn-OMe'
-    file_name = './tmp/'+name_sh+'_opt'
-    name = name_sh+'_opt'
-    n_param = 3
-    print(anti_scube(n=n_param))
+    names = ['Caffein', 'Naphthalene', 'Phenol', '4c-Mn-OMe', '3-MnH2', '2-Mn-OtBu']
+    for name_sh in names:
+        file_name = './tmp/'+name_sh+'_opt'
+        name = name_sh+'_opt'
+        n_param = 2
+        # print(anti_scube(n=n_param))
 
-    # bs, ass = xyz_names_bonds(name + '.mol2')
+        # bs, ass = xyz_names_bonds(name + '.mol2')
 
-    atoms_info = atoms_and_bonds(file_name + '.mol2')
-    ln = mol2_to_notation(xyz_names_bonds(file_name + '.mol2'), n=n_param)
-    print(ln)
-    paired = bonds_of_paired(ln[1])
-    dim_structure = dimensional_structure([ln[0], paired],n=n_param)
-    relaxing(ln[0], paired, dim_structure, n=n_param)
-    # print(dim_structure)
-    write_mol2_file('My_' + name + '_' + 'q.mol2', atoms_info, dim_structure, bonds=paired)
+        atoms_info = atoms_and_bonds(file_name + '.mol2')
+        ln = mol2_to_notation(xyz_names_bonds(file_name + '.mol2'), n=n_param)
+        print(ln)
+        paired = bonds_of_paired(ln[1])
+        dim_structure = dimensional_structure([ln[0], paired],n=n_param, relax=False)
+        relaxing(ln[0], paired, dim_structure, n=n_param)
+        # print(dim_structure)
+        write_mol2_file('My_' + name + '_' + 'q.mol2', atoms_info, dim_structure, bonds=paired)
