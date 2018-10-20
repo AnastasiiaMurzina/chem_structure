@@ -42,7 +42,7 @@ class Spherical_divider():
             :param p1: not important basis of p1
             :return: section of p0 atom in which there's p1
             '''
-        vec = p1 - p0
+        vec = p0 - p1
         vec = vec / np.linalg.norm(vec)
         ds = []
         for i, j in enumerate(self.scube):

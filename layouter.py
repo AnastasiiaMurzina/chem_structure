@@ -2,7 +2,6 @@ import copy
 import numpy as np
 from numpy import arctan2, pi
 from mol2_chain_q import atoms_and_bonds,  bonds_of_paired, xyz_names_bonds, Notation
-from quadro_with_rotate import scube, find_section, anti_scube, spherical_cube
 from mol2_worker import xyz_names_bonds
 
 
@@ -53,8 +52,8 @@ def check(notation, dim_structure_reduced, eps=0.01):
                     length = lengths.get(tuple(sorted([atom, bond[0]])))[0]
                     force = force + dim_structure_reduced[bond[0]]-notation.divider.scube[bond[1]]*length-dim_structure_reduced[atom]
             n_f = np.linalg.norm(force)
+            # if n_f>0.05: print('n_f', n_f)
             forces_next += n_f
-            # if n_f > 0.1:
             dim_structure_reduced[atom] = dim_structure_reduced[atom] + eps*force
         # print(atom, forces_next)
     return dim_structure_reduced
@@ -78,10 +77,8 @@ def dimensional_structure(notation, relax=True):
         cur_key, bonds = p.pop(0)
         for i in bonds:  # build bonds f    or cur_key atom
             if not (i[0] in dim_structure):  # if we don't have position:
-                coord = div[i[1]]*(lengths.get(tuple([cur_key, i[0]]), lengths.get(tuple([i[0], cur_key])))[0]) + dim_structure[cur_key]
+                coord = div[i[1]]*(lengths.get(tuple(sorted([cur_key, i[0]])))[0]) + dim_structure[cur_key]
                 dim_structure.update({i[0]: coord})
-                if relax: dim_structure = check(notation, dim_structure)
-
                 poper = bonds_copy.pop(i[0])
                 poper.insert(0, i[0])
                 ix = -1
@@ -92,21 +89,18 @@ def dimensional_structure(notation, relax=True):
                         break
                 p.append(poper)
             else:
-                print('cycle:', cur_key, i[0])
+                if relax: dim_structure = check(notation, dim_structure)
+                # print('cycle:', cur_key, i[0])
+
     return dim_structure
 
 def relaxing(notation, lengths, dim_structure):
-    # print(notation)
-    # print(dim_structure)
-    # forces = {}
     scube = notation.divider.scube
-    # print(ln.notation)
     for i, j in ln.notation.items():
         for k in j[0]:#i, k[0] elements considered
             delta_length = np.linalg.norm(dim_structure[k[0]]-(dim_structure[i]+scube[k[1]]*(lengths.get(tuple([i, k[0]]), lengths.get(tuple([k[0], i])))[0])))
-            if (delta_length) > 0.09:# and i < k[0]:
-                print(i, k[0], delta_length, lengths.get(tuple([i, k[0]]), lengths.get(tuple([k[0], i])))[1])
-
+            if i>k[0] and (delta_length) > 0.09:# and i < k[0]:
+                print(i, k[0], round(delta_length, 3), lengths.get(tuple([i, k[0]]), lengths.get(tuple([k[0], i])))[1])
     return 0
 
 
@@ -115,21 +109,48 @@ if __name__ == '__main__':
     # name_sh = 'Caffein'
     # name_sh = 'Naphthalene'
     # name_sh = 'Phenol'
-    name_sh = '4c-Mn-OMe'
-    names = ['Caffein', 'Naphthalene', 'Phenol', '4c-Mn-OMe', '3-MnH2', '2-Mn-OtBu']
+    # name_sh = '4c-Mn-OMe'
+    names = ['Caffein', 'Naphthalene', 'Phenol', '4c-Mn-OMe', '3-MnH2', '2-Mn-OtBu', 'Mn-deprot-Mn-bare']
+    # names = ['4c-Mn-OMe', '3-MnH2', '2-Mn-OtBu', 'Mn-deprot-Mn-bare']
+    # names = ['H2']
     for name_sh in names:
         file_name = './tmp/'+name_sh+'_opt'
+        # file_name = name_sh
         name = name_sh+'_opt'
-        n_param = 5
-        # print(anti_scube(n=n_param))
+        n_param = 3
 
         # bs, ass = xyz_names_bonds(name + '.mol2')
 
         atoms_info = atoms_and_bonds(file_name + '.mol2')
         ln = Notation(n=n_param, info_from_file=xyz_names_bonds(file_name + '.mol2'))
-        # print(ln.notation)
         paired = bonds_of_paired(ln.bonds)
+        # print(ln.notation)
         dim_structure = dimensional_structure(ln, relax=True)
-        relaxing(ln, paired, dim_structure)
         # print(dim_structure)
-        write_mol2_file('My_' + name + '_' + 'q.mol2', atoms_info, dim_structure, bonds=paired)
+        # print('1', ln.divider.scube[1], '46', ln.divider.scube[46])
+   #     relaxing(ln, paired, dim_structure)
+        write_mol2_file('My_' + name + '_' + 'q0.mol2', atoms_info, dim_structure, bonds=paired)
+
+        file_name_new = 'My_' + name + '_' + 'q0'
+        atoms_info2 = atoms_and_bonds(file_name_new + '.mol2')
+        ln2 = Notation(n=n_param, info_from_file=xyz_names_bonds(file_name_new + '.mol2'))
+        # paired2 = bonds_of_paired(ln.bonds)
+        # print(ln2.notation)
+
+        # data_from_file = xyz_names_bonds(file_name_new + '.mol2')
+        # for i in range(1, len(data_from_file[1])+1):
+        #     data_from_file[1][i].set_xyz(dim_structure[i][0], dim_structure[i][1], dim_structure[i][2])
+        # ln2 = Notation(n=n_param, info_from_file=data_from_file)
+        # paired = bonds_of_paired(ln2.bonds)
+        # print(ln2.notation)
+        # for k, i in ln2.notation.items():
+        #     for j in range(len(i[0])):
+        #         ln2.notation[k][0][j][1] = ln2.divider.anti_scube[i[0][j][1]]
+        flags = []
+        for i in ln.notation.keys():
+            flags.append(ln.notation[i]==ln2.notation[i])
+        print(name_sh, len(flags) - sum(flags), 'errors')
+        # print(ln.notation == ln2.notation)
+
+        # dim_structure = dimensional_structure(ln2, relax=True)
+        # write_mol2_file('My_' + name + '_' + 'q1.mol2', atoms_info, dim_structure, bonds=paired)
