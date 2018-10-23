@@ -17,7 +17,7 @@ class Atom():
         self.y = y
         self.x = x
 
-    def to_string(self):
+    def defto_string(self):
         return '\t'.join(list(map(str, [self.name, self.x, self.y, self.z, self.name_i, self.i1, self.i2, self.i3])))
 
     def set_orientation(self, basis):

@@ -200,8 +200,9 @@ def get_energy_of_mol2(mol2_file):
                 line = f.readline().split()
                 f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(line[0], line[1], line[2], line[3]))
     call(['/opt/mopac/run_script.sh', os.path.join(tmpdir, xyz_to_mop_mop)])
-    # shutil.rmtree(tmpdir)
-    return get_energy(os.path.join(tmpdir, xyz_to_mop_mop)[:-4]+'.out')
+    a = get_energy(os.path.join(tmpdir, xyz_to_mop_mop)[:-4]+'.out')
+    shutil.rmtree(tmpdir)
+    return a
 
 def get_energy_of_xyz(xyz_file):
     tmpdir = tempfile.mkdtemp()
@@ -219,8 +220,9 @@ def get_energy_of_xyz(xyz_file):
                 line = f.readline().split()
                 f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(line[0], line[1], line[2], line[3]))
     call(['/opt/mopac/run_script.sh', os.path.join(tmpdir, xyz_to_mop_mop)])
-    shutil.rmtree(tmpdir)#add shutil in get_energy!!
-    return get_energy(os.path.join(tmpdir, xyz_to_mop_mop)[:-4]+'.out')
+    a = get_energy(os.path.join(tmpdir, xyz_to_mop_mop)[:-4]+'.out')
+    shutil.rmtree(tmpdir)
+    return a
 
 
 def get_xyz_files(dir):

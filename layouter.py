@@ -110,17 +110,17 @@ if __name__ == '__main__':
     # name_sh = 'Naphthalene'
     # name_sh = 'Phenol'
     # name_sh = '4c-Mn-OMe'
-    names = ['Caffein', 'Naphthalene', 'Phenol', '4c-Mn-OMe', '3-MnH2', '2-Mn-OtBu', 'Mn-deprot-Mn-bare']
-    # names = ['4c-Mn-OMe', '3-MnH2', '2-Mn-OtBu', 'Mn-deprot-Mn-bare']
+    # names = ['Caffein', 'Naphthalene', 'Phenol', '4c-Mn-OMe', '3-MnH2', '2-Mn-OtBu', 'Mn-deprot-Mn-bare', 'Heroin_2']
+    names = ['4c-Mn-OMe', '3-MnH2', '2-Mn-OtBu', 'Mn-deprot-Mn-bare']
     # names = ['H2']
     for name_sh in names:
         file_name = './tmp/'+name_sh+'_opt'
-        # file_name = name_sh
         name = name_sh+'_opt'
-        n_param = 3
+        # file_name = name_sh
+        # file_name = name
+        n_param = 6
 
         # bs, ass = xyz_names_bonds(name + '.mol2')
-
         atoms_info = atoms_and_bonds(file_name + '.mol2')
         ln = Notation(n=n_param, info_from_file=xyz_names_bonds(file_name + '.mol2'))
         paired = bonds_of_paired(ln.bonds)
@@ -148,8 +148,19 @@ if __name__ == '__main__':
         #         ln2.notation[k][0][j][1] = ln2.divider.anti_scube[i[0][j][1]]
         flags = []
         for i in ln.notation.keys():
-            flags.append(ln.notation[i]==ln2.notation[i])
+            flags.append(ln.notation[i].sort()==ln2.notation[i].sort())
+            if ln.notation[i].sort() != ln2.notation[i].sort():
+                print(ln.notation[i], ln2.notation[i])
         print(name_sh, len(flags) - sum(flags), 'errors')
+
+        flags = []
+        for i in ln.bonds.keys():
+            b1, b2 = sorted(ln.bonds[i]), sorted(ln2.bonds[i])
+            for j in range(len(b1)):
+                flags.append(b1[j][1] == b2[j][1])
+                if b1[j][1] != b2[j][1]:
+                    print(b1[j][1], b2[j][1])
+        print(name_sh, len(flags) - sum(flags), 'length errors')
         # print(ln.notation == ln2.notation)
 
         # dim_structure = dimensional_structure(ln2, relax=True)
