@@ -4,8 +4,12 @@ import subprocess
 import shutil
 
 
-# def MopacSolver(cmd='mopac', method='PM7'):
 def MopacSolver(cmd='/opt/mopac/run_script.sh', method='PM7'):
+    """
+    Wraps `MOPAC <http://openmopac.net>`_, which needs to be installed on the system.
+    :param str cmd: MOPAC executable
+    :param str method: model to calculate energy
+    """
     kcal, ev, angstrom = 627.503, 27.2107, 0.52917721092
     tmpdir = tempfile.mkdtemp()
     try:
