@@ -91,16 +91,15 @@ def dimensional_structure(notation, relax=True):
             else:
                 if relax: dim_structure = check(notation, dim_structure)
                 # print('cycle:', cur_key, i[0])
-
     return dim_structure
 
 def relaxing(notation, lengths, dim_structure):
     scube = notation.divider.scube
     for i, j in ln.notation.items():
         for k in j[0]:#i, k[0] elements considered
-            delta_length = np.linalg.norm(dim_structure[k[0]]-(dim_structure[i]+scube[k[1]]*(lengths.get(tuple([i, k[0]]), lengths.get(tuple([k[0], i])))[0])))
-            if i>k[0] and (delta_length) > 0.09:# and i < k[0]:
-                print(i, k[0], round(delta_length, 3), lengths.get(tuple([i, k[0]]), lengths.get(tuple([k[0], i])))[1])
+            delta_length = np.linalg.norm(dim_structure[k[0]]-(dim_structure[i]+scube[k[1]]*(lengths.get((i, k[0]), lengths.get(k[0], i))[0])))
+            if i > k[0] and (delta_length) > 0.09:# and i < k[0]:
+                print(i, k[0], round(delta_length, 3), lengths.get((i, k[0]), lengths.get(k[0], i))[1])
     return 0
 
 
@@ -124,28 +123,13 @@ if __name__ == '__main__':
         atoms_info = atoms_and_bonds(file_name + '.mol2')
         ln = Notation(n=n_param, info_from_file=xyz_names_bonds(file_name + '.mol2'))
         paired = bonds_of_paired(ln.bonds)
-        # print(ln.notation)
         dim_structure = dimensional_structure(ln, relax=True)
-        # print(dim_structure)
-        # print('1', ln.divider.scube[1], '46', ln.divider.scube[46])
-   #     relaxing(ln, paired, dim_structure)
         write_mol2_file('My_' + name + '_' + 'q0.mol2', atoms_info, dim_structure, bonds=paired)
 
         file_name_new = 'My_' + name + '_' + 'q0'
         atoms_info2 = atoms_and_bonds(file_name_new + '.mol2')
         ln2 = Notation(n=n_param, info_from_file=xyz_names_bonds(file_name_new + '.mol2'))
-        # paired2 = bonds_of_paired(ln.bonds)
-        # print(ln2.notation)
 
-        # data_from_file = xyz_names_bonds(file_name_new + '.mol2')
-        # for i in range(1, len(data_from_file[1])+1):
-        #     data_from_file[1][i].set_xyz(dim_structure[i][0], dim_structure[i][1], dim_structure[i][2])
-        # ln2 = Notation(n=n_param, info_from_file=data_from_file)
-        # paired = bonds_of_paired(ln2.bonds)
-        # print(ln2.notation)
-        # for k, i in ln2.notation.items():
-        #     for j in range(len(i[0])):
-        #         ln2.notation[k][0][j][1] = ln2.divider.anti_scube[i[0][j][1]]
         flags = []
         for i in ln.notation.keys():
             flags.append(ln.notation[i].sort()==ln2.notation[i].sort())
