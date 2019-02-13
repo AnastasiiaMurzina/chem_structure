@@ -5,7 +5,7 @@ import numpy as np
 
 # orig_stdout = sys.stdout
 srm, smax = 0.05, 0.1
-fxyz, logf, fopt = 'TS-5-6-19.xyz', 'TS5_steprms_'+str(srm)+'_stepmax_'+str(smax)+'.log', '5_steprms_'+str(srm)+'_stepmax_'+str(smax)+'.xyz'
+fxyz, logf, fopt = 'TS-5-6-19.xyz', 'TS-5-6_steprms_'+str(srm)+'_stepmax_'+str(smax)+'.log', '5_steprms_'+str(srm)+'_stepmax_'+str(smax)+'.xyz'
 # f = open(logf, 'w')
 # sys.stdout = f
 
@@ -14,7 +14,7 @@ final = optimize(optimizer, MopacSolver(cmd='/opt/mopac/run_script.sh'))
 inertia_princpl = np.linalg.eigvalsh(final.inertia)
 final.dump(open('TS-5-6_bopt.xyz', 'w'), 'xyz')
 
-f.close()
+#f.close()
 
 # for geom in optimizer:
     # get energy and gradients for geom

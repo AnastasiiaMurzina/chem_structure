@@ -190,7 +190,7 @@ def get_energy_of_mol2(mol2_file):
     xyz_to_mop = os.path.join(tmpdir, name[:-5:] + '.xyz')
     xyz_to_mop_mop = os.path.join(tmpdir, name[:-5:] + '.mop')
     call(['babel', '-imol2', mol2_file, '-oxyz', xyz_to_mop])
-    header = ' AUX LARGE CHARGE=0 SINGLET NOOPT PM6\nTitle\n'
+    header = ' AUX LARGE CHARGE=0 SINGLET NOOPT PM7\nTitle\n'
     with open(xyz_to_mop, 'r') as f:
         with open(os.path.join(tmpdir, xyz_to_mop_mop), 'w') as f_w:
             f_w.write(header)
@@ -210,7 +210,7 @@ def get_energy_of_xyz(xyz_file):
     xyz_to_mop = xyz_file
     xyz_to_mop_mop = os.path.join(tmpdir, name[:-5:] + '.mop')
     # call(['babel', '-imol2', mol2_file, '-oxyz', xyz_to_mop])
-    header = ' AUX LARGE CHARGE=0 SINGLET NOOPT PM6\nTitle\n'
+    header = ' AUX LARGE CHARGE=0 SINGLET NOOPT PM7\nTitle\n'
     with open(xyz_to_mop, 'r') as f:
         with open(os.path.join(tmpdir, xyz_to_mop_mop), 'w') as f_w:
             f_w.write(header)
