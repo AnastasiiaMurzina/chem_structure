@@ -154,22 +154,22 @@ def mopacOut_to_xyz_with_energy(mopac_file, outXYZ_file):
             info = f.readline().split()
             count = int(info[-2])
             formula = (info[:-3])
-            for _ in range(11):
+            for _ in range(10):
                 f.readline()
             energy = float(f.readline().split()[-2])
     except:
         return 0
     with open(mopac_file + '.out', 'r') as f:
         next(l for l in f if 'CARTESIAN COORDINATES' in l)
-        for _ in range(3):
-            next(f)
+        next(l for l in f if 'CARTESIAN COORDINATES' in l)
+        next(f)
         coords = [next(f) for _ in range(count)]
     with open(outXYZ_file, 'w') as f1:
         f1.write(str(count)+'\n')
         f1.write(str(energy)+'\n')
         for i in coords:
             line = i.split()
-            f1.write('{}\t{}\t{}\t{}\n'.format(line[1], line[2], line[3], line[4]))
+            f1.write('{}\t{}\t{}\t{}\n'.format(*line[1:]))
     return energy
 
 def get_energy(mopac_file):
@@ -208,7 +208,7 @@ def get_energy_of_xyz(xyz_file):
     tmpdir = tempfile.mkdtemp()
     name = os.path.basename(os.path.normpath(xyz_file))
     xyz_to_mop = xyz_file
-    xyz_to_mop_mop = os.path.join(tmpdir, name[:-5:] + '.mop')
+    xyz_to_mop_mop = os.path.join(tmpdir, name[:-4:] + '.mop')
     # call(['babel', '-imol2', mol2_file, '-oxyz', xyz_to_mop])
     header = ' AUX LARGE CHARGE=0 SINGLET NOOPT PM7\nTitle\n'
     with open(xyz_to_mop, 'r') as f:
@@ -218,7 +218,7 @@ def get_energy_of_xyz(xyz_file):
             f.readline()
             for _ in range(n):
                 line = f.readline().split()
-                f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(line[0], line[1], line[2], line[3]))
+                f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(*line))
     call(['/opt/mopac/run_script.sh', os.path.join(tmpdir, xyz_to_mop_mop)])
     a = get_energy(os.path.join(tmpdir, xyz_to_mop_mop)[:-4]+'.out')
     shutil.rmtree(tmpdir)
@@ -238,7 +238,7 @@ if __name__ == '__main__':
     options = {'Title': 'Smth info about optimization', 'Calculation Type': 'Single Point',
                               'Charge': 0, 'Multiplicity': 1, 'Theory': 'PM7'}
 
-    import shutil, tempfile
+
     import subprocess
     # print(get_energy_of_mol2('./q_compare/2_no_relax/My_2-Mn-OtBu_opt_q.mol2'))
     # print(get_energy_of_mol2('./q_compare/2_relax/My_2-Mn-OtBu_opt_q.mol2'))
