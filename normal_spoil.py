@@ -5,6 +5,7 @@ from mopac_worker import get_energy_of_xyz, mopacOut_to_xyz_with_energy,\
     writeInputFileFromXYZ
 import shutil, tempfile
 from subprocess import call
+import os
 from os import path
 # from collections import Counter
 alias = '/opt/mopac/run_script.sh'
@@ -80,8 +81,9 @@ def spoil_and_opt(file_name, d=0.5, n=250):
 
 
 if __name__ == '__main__':
+
     # spoil_and_opt('4a_opt.xyz', d=0.05, n=100)
-    spoil_and_opt('5_opt.xyz', d=0.05, n=100)
+    # spoil_and_opt('5_opt.xyz', d=0.01, n=100)
     # spoil_de_dg('5_opt.xyz', d=0.05, n=100)
     # print(get_energy_of_xyz('4a_opt.xyz'))
     # print(get_energy_of_xyz('5_opt.xyz'))
