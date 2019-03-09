@@ -42,6 +42,27 @@ class Bond():
         self.sections = sections
 
 
+class Molecule():
+    def __init__(self, mol2file=''):
+        self.atoms = {}
+        info, positions, bonds = read_mol2(mol2file)
+        for line in positions.split('\n')[1:-1:]:
+            l = line.split()
+            self.atoms.update({int(l[0]): Atom(l[1], *l[5::])})
+            self.atoms[int(l[0])].set_xyz(*list(map(float, l[2:5:])))
+        self.bonds = {}
+        for line in bonds.split('\n')[1::]:
+            l = line.split()
+            l = [int(l[0]), int(l[1]), int(l[2]), l[3]]
+            self.bonds.update({l[0]: Bond(l[1], l[2], l[3])})
+            self.bonds[l[0]].set_length(np.linalg.norm(self.atoms[l[1]].position()-self.atoms[l[2]].position()))
+
+    def Notation(self):
+        pass
+
+
+
+
 def read_mol2(file_name):
     with open(file_name, 'r') as f1:
         all_f = f1.read()
@@ -79,15 +100,11 @@ def xyz_names_bonds(file_name):
     atoms, xyz, bonds = {}, {}, {}
     ns = check_mol2_line(file_name)
     for i in range(len(positions) // ns):
-        # print(positions[ns*i + 5])
         atom = Atom(positions[ns * i + 1], positions[ns*i + 5],
                     positions[ns*i + 6], positions[ns*i + 7],
                     float(positions[ns*i + 8]))
         atom.set_xyz(float(positions[ns * i + 2]), float(positions[ns * i + 3]), float(positions[ns * i + 4]))
         atoms.update({i+1: atom})
-        # xyz.update({int(positions[ns * i]): np.array([float(positions[ns * i + 2]),
-        #                                          float(positions[ns * i + 3]),
-        #                                          float(positions[ns * i + 4])])})
     bonds = []
     for i in range(len(bondsf) // 4):
         b1, b2, attr = bondsf[4 * i + 1:4 * i + 4:]
@@ -117,4 +134,6 @@ def atoms_and_bonds(file_name, bonds_choice=False):
 
 if __name__ == "__main__":
     # bonds = (xyz_names_bonds('Caffein.mol2')[-1])
-    atoms = atoms_and_bonds('Caffein.mol2')
+    # atoms = atoms_and_bonds('Caffein.mol2')
+    a = Molecule('./many_opted_mol2s/3a-MnH2-ads-MeOAc_opted.mol2')
+    print(a.bonds[1].connected)

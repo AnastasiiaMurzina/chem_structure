@@ -1,7 +1,7 @@
 import numpy as np
 import copy
 from mol2_worker import xyz_names_bonds
-from mol2_chain import mol2_to_notation, to_two_ways_bond2, dimensional_structure, bonds_of_paired, to_two_ways_bond
+from mol2_chain_q import mol2_to_notation, to_two_ways_bond2, dimensional_structure, bonds_of_paired, to_two_ways_bond
 from penta_with_rotate import find_section, rotate_by_basis, rotate_non_perpendicular, n_z, n_y, rotate_ten_vars, pp, find_basis
 
 

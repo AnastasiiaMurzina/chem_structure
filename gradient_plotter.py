@@ -56,18 +56,23 @@ def mopac_aux_energy_plotter(aux):
     plt.show()
 
 
-def log_berny_plotter(file_name):
+def log_berny_plotter(file_name, mopac_energy=True, title='Berny energy optimizer'):
     log = open(file_name, 'r').read()
     log = log.split('\n')
     loge = list(filter(lambda x: 'Energy:' in x, log))
-    logens = [float(i.split()[-1]) for i in loge]
+    if mopac_energy:
+        logens = [float(i.split()[-1])*27.21139 for i in loge] #hartree to Ev
+    else:
+        logens = [float(i.split()[-1]) for i in loge]
     plt.plot(list(range(len(logens))), logens)
     plt.xlabel('Num of step')
     plt.ylabel('Step energy')
-    plt.title('Berny energy optimizer')
+    plt.title(title)
+    plt.ticklabel_format(useOffset=False)
     plt.show()
 
 if __name__ == '__main__':
-    mopac_aux_energy_plotter('TS-5-6_ts.aux')
+    # mopac_aux_energy_plotter('TS-5-6_ts.aux')
     # log_berny_plotter('/home/anastasiia/PycharmProjects/chem_structure/5_steprms_0.01_stepmax_0.05.log')
     # log_berny_plotter('6_bopt.log')
+    pass
