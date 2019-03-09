@@ -1,4 +1,5 @@
 import numpy as np
+from quadro_with_rotate_class import Spherical_divider
 
 class Atom():
     def __init__(self, name, name_with_i, i1, i2, i3):
@@ -28,7 +29,7 @@ class Atom():
 
 
 class Bond():
-    def __init__(self, c1, c2, attr, length=1., sections=0):
+    def __init__(self, c1, c2, attr, length=1., sections=[]):
         self.connected = {c1, c2} # c1<c2
         self.attr = attr
         self.length = length
@@ -43,8 +44,9 @@ class Bond():
 
 
 class Molecule():
-    def __init__(self, mol2file=''):
+    def __init__(self, mol2file='', n=5):
         self.atoms = {}
+        self.n = n
         info, positions, bonds = read_mol2(mol2file)
         for line in positions.split('\n')[1:-1:]:
             l = line.split()
@@ -57,8 +59,14 @@ class Molecule():
             self.bonds.update({l[0]: Bond(l[1], l[2], l[3])})
             self.bonds[l[0]].set_length(np.linalg.norm(self.atoms[l[1]].position()-self.atoms[l[2]].position()))
 
-    def Notation(self):
-        pass
+
+    def set_notation(self):
+        current_divider = Spherical_divider(self.n)
+        for kbond, ibond in self.bonds.items():
+            section = current_divider.find_section(self.atoms[min(ibond.connected)].position(), self.atoms[max(ibond.connected)].position())
+            section_anti = current_divider.find_section(self.atoms[max(ibond.connected)].position(), self.atoms[min(ibond.connected)].position())
+            ibond.set_section([section, section_anti])
+
 
 
 
@@ -136,4 +144,4 @@ if __name__ == "__main__":
     # bonds = (xyz_names_bonds('Caffein.mol2')[-1])
     # atoms = atoms_and_bonds('Caffein.mol2')
     a = Molecule('./many_opted_mol2s/3a-MnH2-ads-MeOAc_opted.mol2')
-    print(a.bonds[1].connected)
+    a.set_notation()
