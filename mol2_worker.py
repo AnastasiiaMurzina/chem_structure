@@ -11,7 +11,6 @@ class Atom():
         self.i1 = i1
         self.i2 = i2
         self.i3 = i3
-        self.orientation = (0, 0)
 
     def set_xyz(self, x, y, z):
         self.z = z
@@ -21,8 +20,6 @@ class Atom():
     def defto_string(self):
         return '\t'.join(list(map(str, [self.name, self.x, self.y, self.z, self.name_i, self.i1, self.i2, self.i3])))
 
-    def set_orientation(self, basis):
-        self.orientation = basis
 
     def position(self):
         return np.array([self.x, self.y, self.z])
@@ -73,6 +70,31 @@ class Molecule():
             section_anti = current_divider.find_section(self.atoms[max(ibond.connected)].position(), self.atoms[min(ibond.connected)].position())
             ibond.set_section([section, section_anti])
 
+    def from_notation(self):
+        """
+        From bonds cube notation get xyz-coords
+        :return coords:
+        """
+        coords = [np.array([0, 0, 0])]
+        #TODO
+
+        return coords
+
+    def to_mol2(self, mol2file):
+        with open(mol2file, 'w') as f:
+            f.write('@<TRIPOS>MOLECULE\n*****{} {} 0 0 0\nSMALL\nGASTEIGER\n\n@<TRIPOS>ATOM\n'.format(str(len(self.atoms)), str(len(self.bonds))))
+            for k, atom in self.atoms.items():
+                f.write(('\t{}'*9+'\n').format(k, atom.name, atom.x, atom.y, atom.z, atom.name_i, atom.i1, atom.i2, atom.i3))
+            f.write('@<TRIPOS>BOND\n')
+            for k, bond in self.bonds.items():
+                f.write('\t{}\t{}\t{}\t{}\n'.format(k, *bond.connected, bond.attr))
+
+
+    def to_xyz(self, xyzfile):
+        with open(xyzfile, 'w') as f:
+            f.write(str(len(self.atoms))+'\n\n')
+            for k, atom in self.atoms.items():
+                f.write('{}\t{}\t{}\t{}\n'.format(atom.name, atom.x, atom.y, atom.z))
 
 
 def read_mol2(file_name):
