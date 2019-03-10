@@ -40,6 +40,7 @@ def generateInputFile(opts, mol_file_positions, mol_file_names):
 
     return output
 
+
 def writeInputFileFromXYZ(opts, xyz_file, mop_file):
     title = opts['Title']
     calculate = opts['Calculation Type']
@@ -75,6 +76,7 @@ def writeInputFileFromXYZ(opts, xyz_file, mop_file):
     with open(mop_file, 'w') as f:
         f.write(output)
     return output
+
 
 def writeInputFileFromMOL2(opts, mol2_file, mop_file):
     title = opts['Title']
@@ -115,25 +117,30 @@ def writeInputFileFromMOL2(opts, mol2_file, mop_file):
         f.write(output)
     return output
 
+
 def writeInputFile(opt, positions, names, file_name):
     with open(file_name, 'w') as f:
         f.write(generateInputFile(opt, positions, names))
 
+
 def mopacOut_to_xyz(mopac_file, outXYZ_file):
+    '''
+    :param mopac_file: file name without extension performed mop-process
+    :param outXYZ_file: xyz to write file
+    :return: None
+    '''
     with open(mopac_file+'.arc', 'r') as farc:
         for _ in range(8):
             farc.readline()
         info = farc.readline().split()
         count = int(info[-2])
         formula = (info[:-3])
-        for _ in range(11):
-            farc.readline()
-        energy = float(farc.readline().split()[-2])
 
-    with open(mopac_file+'.out', 'r') as f:
-        for _ in range(8):
-            f.readline()
-        info = f.readline().split()
+    # with open(mopac_file+'.out', 'r') as f:
+    #     for _ in range(8):
+    #         f.readline()
+    #     info = f.readline().split()
+
     with open(mopac_file + '.out', 'r') as f:
         next(l for l in f if 'CARTESIAN COORDINATES' in l)
         next(l for l in f if 'CARTESIAN COORDINATES' in l)
@@ -145,10 +152,9 @@ def mopacOut_to_xyz(mopac_file, outXYZ_file):
         for i in coords:
             line = i.split()
             f1.write('{}\t{}\t{}\t{}\n'.format(line[1], line[2], line[3], line[4]))
-    return energy
 
 
-def get_energy(mopac_file):
+def get_energy(mopac_file): # it's *.arc file - don't use this function
     with open(mopac_file, 'r') as f:
         try:
             next(l for l in f if 'FINAL HEAT OF FORMATION' in l)
@@ -160,32 +166,32 @@ def get_energy(mopac_file):
     return energy
 
 
-def get_energy_of_mol2(mol2_file):
-    tmpdir = tempfile.mkdtemp()
-    name = os.path.basename(os.path.normpath(mol2_file))
-    xyz_to_mop = os.path.join(tmpdir, name[:-5:] + '.xyz')
-    call(['babel', '-imol2', mol2_file, '-oxyz', xyz_to_mop])
-    return get_energy_of_xyz(xyz_to_mop, tmpdir=tmpdir)
-
-def get_energy_of_xyz(xyz_file, tmpdir=False):
-    if tmpdir == False:
+def get_energy_of_xyz(xyz_file, tmpdir=''):
+    if tmpdir == '':
         tmpdir = tempfile.mkdtemp()
     name = os.path.basename(os.path.normpath(xyz_file))
-    xyz_to_mop = xyz_file
-    xyz_to_mop_mop = os.path.join(tmpdir, name[:-4:] + '.mop')
+    xyz_to_mop = os.path.join(tmpdir, name[:-4:] + '.mop')
     header = ' AUX LARGE CHARGE=0 SINGLET NOOPT PM7\nTitle\n'
-    with open(xyz_to_mop, 'r') as f:
-        with open(os.path.join(tmpdir, xyz_to_mop_mop), 'w') as f_w:
+    with open(xyz_file, 'r') as f:
+        with open(os.path.join(tmpdir, xyz_to_mop), 'w') as f_w:
             f_w.write(header)
             n = int(f.readline())
             f.readline()
             for _ in range(n):
                 line = f.readline().split()
                 f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(*line))
-    call(['/opt/mopac/run_script.sh', os.path.join(tmpdir, xyz_to_mop_mop)])
-    a = get_energy(os.path.join(tmpdir, xyz_to_mop_mop)[:-4]+'.out')
+    call(['/opt/mopac/run_script.sh', os.path.join(tmpdir, xyz_to_mop)])
+    a = get_energy(os.path.join(tmpdir, xyz_to_mop)[:-4]+'.out')
     shutil.rmtree(tmpdir)
     return a
+
+
+def get_energy_of_mol2(mol2_file):
+    tmpdir = tempfile.mkdtemp()
+    name = os.path.basename(os.path.normpath(mol2_file))
+    xyz_to_mop = os.path.join(tmpdir, name[:-5:] + '.xyz')
+    call(['babel', '-imol2', mol2_file, '-oxyz', xyz_to_mop])
+    return get_energy_of_xyz(xyz_to_mop, tmpdir=tmpdir)
 
 
 def get_xyz_files(dir):

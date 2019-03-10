@@ -59,15 +59,19 @@ class Molecule():
             self.bonds.update({l[0]: Bond(l[1], l[2], l[3])})
             self.bonds[l[0]].set_length(np.linalg.norm(self.atoms[l[1]].position()-self.atoms[l[2]].position()))
 
+    def set_n(self, n):
+        self.n = n
 
     def set_notation(self):
+        '''
+        self.notation is array [section: from max num, section2: from min num]
+        :return: None
+        '''
         current_divider = Spherical_divider(self.n)
         for kbond, ibond in self.bonds.items():
             section = current_divider.find_section(self.atoms[min(ibond.connected)].position(), self.atoms[max(ibond.connected)].position())
             section_anti = current_divider.find_section(self.atoms[max(ibond.connected)].position(), self.atoms[min(ibond.connected)].position())
             ibond.set_section([section, section_anti])
-
-
 
 
 
