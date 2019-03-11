@@ -6,11 +6,6 @@ The reason may be another order of elements (if there'are 4 bonds: append clockw
 
 Isomer must be a stable compoud.
 
-## Prerequisites
-Babel, shaep
-
-### Convert xyz to mol2
-$ ```babel -ixyz *.xyz -omol2 *.mol2```
 
 ### One molecule from original mol2 to restored from notation
 
@@ -42,27 +37,15 @@ write_mol2_file('new_file_name.mol2', ass, coords, to_two_ways_bond(bs, with_att
 ```
 ### Align
 
-Using shaep $ ```shaep -q original.mol2 after_restore.mol2 output_difference_file --transformDistance=1.9```
-Or:
+Using rmsd (pip install rmsd) 
 ```
-import sys, os, subprocess, shutil, tempfile
-d = os.getcwd()
-tmpdir = tempfile.mkdtemp()
+import rmsd
 
-compared_molecule2 = os.path.join(d, name + '.mol2')
-compared_molecule = os.path.join(d, 'long.mol2')
-
-sim_file = os.path.join(tmpdir, 'sim.txt')
-subprocess.call([os.path.join(d, "shaep"), "-q", compared_molecule2, compared_molecule, sim_file, '--transformDistance=1.9'],
-                    stdout=subprocess.DEVNULL)
-with open(sim_file, 'r') as f:
-    f.readline()
-    print(f.readline())
-    #coeffs = f.readline().split()
-    # coeffs = coeffs[2:6] #+ coeffs[8:]
-    # print(coeffs)
-    # print(np.linalg.norm(np.array(list(map(float, coeffs)))))
-shutil.rmtree(tmpdir)
+coord -= rmsd.centroid(coord)
+coord3 -= rmsd.centroid(coord3)
+rotate = rmsd.kabsch(coord3, coord)
+coord3 = np.dot(coord3, rotate)
+rmsd.rmsd(coord, coord3)
 ```
 
 
