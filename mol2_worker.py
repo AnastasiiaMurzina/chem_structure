@@ -1,5 +1,8 @@
 import numpy as np
+from copy import deepcopy
 from quadro_with_rotate_class import Spherical_divider
+import rmsd
+
 
 class Atom():
     def __init__(self, name, name_with_i, i1, i2, i3):
@@ -64,25 +67,75 @@ class Molecule():
         self.notation is array [section: from max num, section2: from min num]
         :return: None
         '''
-        current_divider = Spherical_divider(self.n)
+        self.divider = Spherical_divider(self.n)
         for kbond, ibond in self.bonds.items():
-            section = current_divider.find_section(self.atoms[min(ibond.connected)].position(), self.atoms[max(ibond.connected)].position())
-            section_anti = current_divider.find_section(self.atoms[max(ibond.connected)].position(), self.atoms[min(ibond.connected)].position())
+            section = self.divider.find_section(self.atoms[min(ibond.connected)].position(), self.atoms[max(ibond.connected)].position())
+            section_anti = self.divider.find_section(self.atoms[max(ibond.connected)].position(), self.atoms[min(ibond.connected)].position())
             ibond.set_section([section, section_anti])
 
     def from_notation(self):
         """
-        From bonds cube notation get xyz-coords
-        :return coords:
+        From bonds cube notation get xyz-coords with relax
+        :return dim_structure:
         """
-        coords = [np.array([0, 0, 0])]
-        #TODO
+        dim_structure = {1: np.array([0, 0, 0])}
+        bonds = bonds_of_paired(self.bonds)
+        bonds_copy = deepcopy(bonds)
+        p = [[1, max(key), bonds_copy[key]] for key in bonds_copy.keys() if 1 in key]
+        # p.insert(0, 1)  # p[0] - current atom, p[1] - bonds, p[2] - basis of p[0] atom
+        while len(p) != 0:
+            cur_key, atom_to_bond, bond_characteristics = p.pop(0)
+            # print(bond_characteristics)
+            if not (atom_to_bond in dim_structure.keys()):
+                coord = self.divider.scube[bond_characteristics[1][cur_key < atom_to_bond]] * bond_characteristics[0]\
+                        + dim_structure[cur_key]
+                dim_structure.update({atom_to_bond: coord})
+                [p.append([atom_to_bond, list(set(key)-{atom_to_bond})[0], bonds_copy[key]])
+                 for key in bonds_copy.keys() if atom_to_bond in key]
+                # print(cur_key, atom_to_bond)
+            # TODO add checker!!
 
-        return coords
+            # if not (i[0] in dim_structure):  # if we don't have position:
+            #     coord = self.divider[i[1]] * (lengths.get(tuple(sorted([cur_key, i[0]])))[0]) + dim_structure[cur_key]
+            #     dim_structure.update({i[0]: coord})
+            #     poper = bonds_copy.pop(i[0])
+            #     poper.insert(0, i[0])
+            #     ix = -1
+            #     while ix < len(poper[1]) - 1:
+            #         ix += 1
+            #         if poper[1][ix][0] == cur_key:
+            #             poper[1].pop(ix)
+            #             break
+            #     p.append(poper)
+            # else:
+            #     dim_structure = check(notation, dim_structure)
+        return dim_structure
+
+    def check(notation, dim_structure_reduced, eps=0.01):
+        forces = 1
+        forces_next = 0
+        notation_l = notation.notation
+
+        while abs(forces_next - forces) > eps ** 3:
+            forces_next, forces = 0, forces_next
+            lengths = bonds_of_paired(notation.bonds)
+            for atom in dim_structure_reduced:
+                force = np.array([0, 0, 0])
+                for bond in notation_l[atom][0]:
+                    if bond[0] in dim_structure_reduced:
+                        length = lengths.get(tuple(sorted([atom, bond[0]])))[0]
+                        force = force + dim_structure_reduced[bond[0]] - notation.divider.scube[bond[1]] * length - \
+                                dim_structure_reduced[atom]
+                n_f = np.linalg.norm(force)
+                # if n_f>0.05: print('n_f', n_f)
+                forces_next += n_f
+                dim_structure_reduced[atom] = dim_structure_reduced[atom] + eps * force
+            # print(atom, forces_next)
+        return dim_structure_reduced
 
     def to_mol2(self, mol2file):
         with open(mol2file, 'w') as f:
-            f.write('@<TRIPOS>MOLECULE\n*****{} {} 0 0 0\nSMALL\nGASTEIGER\n\n@<TRIPOS>ATOM\n'.format(str(len(self.atoms)), str(len(self.bonds))))
+            f.write('@<TRIPOS>MOLECULE\n*****\n{} {} 0 0 0\nSMALL\nGASTEIGER\n\n@<TRIPOS>ATOM\n'.format(str(len(self.atoms)), str(len(self.bonds))))
             for k, atom in self.atoms.items():
                 f.write(('\t{}'*9+'\n').format(k, atom.name, atom.x, atom.y, atom.z, atom.name_i, atom.i1, atom.i2, atom.i3))
             f.write('@<TRIPOS>BOND\n')
@@ -95,6 +148,12 @@ class Molecule():
             f.write(str(len(self.atoms))+'\n\n')
             for k, atom in self.atoms.items():
                 f.write('{}\t{}\t{}\t{}\n'.format(atom.name, atom.x, atom.y, atom.z))
+
+    def to_positions_array(self):
+        pos = []
+        for _, atom in self.atoms.items():
+            pos.append(atom.position())
+        return np.array(pos)
 
 
 def read_mol2(file_name):
@@ -112,6 +171,16 @@ def check_mol2_line(file_name):
         while f.readline() != "@<TRIPOS>ATOM\n":
             pass
         return len(f.readline().split())
+
+def bonds_of_paired(bonds):
+    '''
+    :param bonds: in format {1: [[[2,1]], (2,1)], ...}
+    :return: bonds in format {(c_1, c_2): [length, sections, attr], ...}
+    '''
+    paired_bonds = {}
+    for key, item in bonds.items():
+        paired_bonds.update({tuple(item.connected): [item.length, item.sections, item.attr]})
+    return paired_bonds
 
 
 def xyz_names(file_name):
@@ -166,8 +235,29 @@ def atoms_and_bonds(file_name, bonds_choice=False):
         return atoms, bonds
     return atoms
 
+def compare_structers(mol1, mol2):
+    mol1 -= rmsd.centroid(mol1)
+    mol2 -= rmsd.centroid(mol2)
+    rotate = rmsd.kabsch(mol2, mol1)
+
+    mol2 = np.dot(mol2, rotate)
+    return rmsd.rmsd(mol1, mol2)
+
+
 if __name__ == "__main__":
     # bonds = (xyz_names_bonds('Caffein.mol2')[-1])
     # atoms = atoms_and_bonds('Caffein.mol2')
+
     a = Molecule('./many_opted_mol2s/3a-MnH2-ads-MeOAc_opted.mol2')
     a.set_notation()
+    before = a.to_positions_array()
+    struct = a.from_notation()
+
+    b = deepcopy(a)
+    for k, pos in struct.items():
+        b.atoms[k].set_xyz(*pos)
+    b.to_mol2('uncompressed.mol2')
+    after = b.to_positions_array()
+
+    print(compare_structers(before, after))
+
