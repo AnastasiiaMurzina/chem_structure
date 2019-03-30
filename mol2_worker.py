@@ -225,6 +225,14 @@ def compare_structers(mol1, mol2):
     mol2 = np.dot(mol2, rotate)
     return rmsd.rmsd(mol1, mol2)
 
+def xyz_to_array(file_name):
+    with open(file_name, 'r') as f:
+        n = int(f.readline())
+        f.readline()
+        lines = []
+        for _ in range(n):
+            lines.append([float(i) if len(i) > 3 and i[3:].isdigit() else i for i in f.readline().split()])
+    return lines
 
 if __name__ == "__main__":
     # bonds = (xyz_names_bonds('Caffein.mol2')[-1])
