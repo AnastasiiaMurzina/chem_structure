@@ -22,6 +22,10 @@ def get_dG(file_xyz, tmp=''):
     call(['/opt/mopac/run_script.sh', mop])
 
     with open(out, 'r') as f:
+        next(l for l in f if 'HEAT OF FORMATION' in l)
+        f.readline()
+        zpe_line = f.readline()
+        zpe = float(zpe_line[3])
         next(l for l in f if 'CALCULATED THERMODYNAMIC PROPERTIES' in l)
         line = f.readline().split()
         while line[0] != '370.00':
@@ -35,7 +39,7 @@ def get_dG(file_xyz, tmp=''):
         dG = entalpy - 370 * entropy
 
     if flag_deleter: rmtree(tmp)
-    return entropy, entalpy, dG
+    return entropy, entalpy, dG, zpe
 
 
 if __name__ == '__main__':
