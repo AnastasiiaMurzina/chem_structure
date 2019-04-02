@@ -2,7 +2,7 @@ from os import path
 from tempfile import mkdtemp
 from shutil import rmtree
 from mol2_worker import xyz_to_array
-from subprocess import call
+from subprocess import call, Popen, PIPE
 
 
 def get_dG(file_xyz, tmp=''):
@@ -19,12 +19,16 @@ def get_dG(file_xyz, tmp=''):
         f_w.write('LET CHARGE=0 SINGLET PM6-D3H4X NOOPT THERMO\nTi_C_complex_UFF\n\n')
         for i in product:
             f_w.write('{}\t{}\t{}\t{}\n'.format(i[0], str(i[1]), str(i[2]), str(i[3])))
-    call(['/opt/mopac/run_script.sh', mop])
+    call(['/opt/mopac2/run_mopac', mop])
+    # proc = Popen(['sudo', '-S', '/opt/mopac/run_script.sh', mop], stdout=PIPE, stdin=PIPE, stderr=PIPE, universal_newlines=True)
+    # proc.stdin.write("\n")
+    # out, err = proc.communicate(input="\n")
 
     with open(out, 'r') as f:
         next(l for l in f if 'HEAT OF FORMATION' in l)
+        next(l for l in f if 'HEAT OF FORMATION' in l)
         f.readline()
-        zpe_line = f.readline()
+        zpe_line = f.readline().split()
         zpe = float(zpe_line[3])
         next(l for l in f if 'CALCULATED THERMODYNAMIC PROPERTIES' in l)
         line = f.readline().split()

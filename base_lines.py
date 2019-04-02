@@ -24,14 +24,15 @@ def linear_line(reactant, product, product_name='', reactant_name=''):
             f.write(str(mols) + '\n\n')
             for inx in range(mols):
                 f.write('{}\t{}\t{}\t{}\n'.format(reactant[inx][0], *current_state[inx]))
-        y.append(get_dG(tmp_file)[-1])  # /3505.39*103)
-    scaled = 103 / (y[-1] - y[0])
-    y = [yy * scaled for yy in y]
+        _, _, gibbs, zpe = get_dG(tmp_file, tmp=tmp)
+        y.append(gibbs-zpe)
+    # scaled = 103 / (y[-1] - y[0])
+    y = [yy  for yy in y]
     plt.plot(x, y)
     plt.title(reactant_name+'->'+product_name+' linear path in free Gibbs energy')
     plt.show()
-    print('free Gibbs energy threshold of reaction ', max(y) - y[0])
-    print('free Gibbs energy delta of reaction', y[-1] - y[0])
+    print('free Gibbs energy - E_zpe threshold of reaction ', max(y) - y[0])
+    print('free Gibbs energy - E_zpe delta of reaction', y[-1] - y[0])
     shutil.rmtree(tmp)
 
     def mc_rmsd_line(reactant, product):
