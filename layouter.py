@@ -1,8 +1,8 @@
 import copy
 import numpy as np
-from numpy import arctan2, pi
-from mol2_chain_q import atoms_and_bonds,  bonds_of_paired
-from mol2_worker import xyz_names_bonds
+from numpy import arctan2
+from mol2_chain_q import bonds_of_paired
+
 
 
 def cartesian_to_spherical(vector):
@@ -90,12 +90,11 @@ def dimensional_structure(notation, relax=True):
                 p.append(poper)
             else:
                 if relax: dim_structure = check(notation, dim_structure)
-                # print('cycle:', cur_key, i[0])
     return dim_structure
 
 def relaxing(notation, lengths, dim_structure):
     scube = notation.divider.scube
-    for i, j in ln.notation.items():
+    for i, j in notation.items():
         for k in j[0]:#i, k[0] elements considered
             delta_length = np.linalg.norm(dim_structure[k[0]]-(dim_structure[i]+scube[k[1]]*(lengths.get((i, k[0]), lengths.get(k[0], i))[0])))
             if i > k[0] and (delta_length) > 0.09:# and i < k[0]:
@@ -105,9 +104,6 @@ def relaxing(notation, lengths, dim_structure):
 
 
 if __name__ == '__main__':
-    # name_sh = 'Caffein'
-    # name_sh = 'Naphthalene'
-    # name_sh = 'Phenol'
     # name_sh = '4c-Mn-OMe'
     # names = ['Caffein', 'Naphthalene', 'Phenol', '4c-Mn-OMe', '3-MnH2', '2-Mn-OtBu', 'Mn-deprot-Mn-bare', 'Heroin_2']
     names = ['4c-Mn-OMe', '3-MnH2', '2-Mn-OtBu', 'Mn-deprot-Mn-bare']

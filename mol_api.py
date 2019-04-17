@@ -1,6 +1,6 @@
 import numpy as np
 from quadro_with_rotate_class import Spherical_divider
-from mol2_worker import bonds_of_paired, read_mol2, Atom, Bond
+from mol2_worker import bonds_of_paired, read_mol2, Atom, Bond, xyz_names_bonds, compare_structers
 from mol2_chain_q import bonds_to_one_way_dict, to_two_ways_bond2, prepare_bonds
 from layouter import *
 import copy
@@ -71,12 +71,21 @@ class Molecule():
             pos.append(atom.position())
         return np.array(pos)
 
+    def compare_with(self, xyz_positions):
+        origin = copy.deepcopy(self.to_positions_array())
+        xyz_positions_c = copy.deepcopy(xyz_positions)
+        return compare_structers(origin, xyz_positions_c)
+
+
 
 if __name__ == '__main__':
     ln = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_init.mol2')
-
+    # print(ln.notation.notation)
     # ln = Notation(n=n_param, info_from_file=xyz_names_bonds(file_name + '.mol2'))
     # paired = bonds_of_paired(ln.bonds)
     dim_structure = dimensional_structure(ln.notation, relax=True)
+    print(ln.to_positions_array())
     print(dim_structure)
+    print(ln.compare_with(np.array([i for _, i in dim_structure.items()])))
+
     # write_mol2_file('My_' + name + '_' + 'q0.mol2', atoms_info, dim_structure, bonds=paired)
