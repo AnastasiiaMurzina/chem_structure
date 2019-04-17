@@ -154,7 +154,7 @@ def mopacOut_to_xyz(mopac_file, outXYZ_file):
             f1.write('{}\t{}\t{}\t{}\n'.format(line[1], line[2], line[3], line[4]))
 
 
-def get_energy(mopac_file): # it's *.arc file - don't use this function
+def get_energy(mopac_file):
     with open(mopac_file, 'r') as f:
         try:
             next(l for l in f if 'FINAL HEAT OF FORMATION' in l)
@@ -165,10 +165,21 @@ def get_energy(mopac_file): # it's *.arc file - don't use this function
         energy = float(next(f).split()[-2])
     return energy
 
+def get_heat(mopac_file):
+    with open(mopac_file, 'r') as f:
+        try:
+            line = next(l for l in f if 'FINAL HEAT OF FORMATION' in l)
+
+        except:
+            return None
+        return float(line.split()[5])
+
 
 def get_energy_of_xyz(xyz_file, tmpdir=''):
+    del_flag = False
     if tmpdir == '':
         tmpdir = tempfile.mkdtemp()
+        del_flag = True
     name = os.path.basename(os.path.normpath(xyz_file))
     xyz_to_mop = os.path.join(tmpdir, name[:-4:] + '.mop')
     header = ' AUX LARGE CHARGE=0 SINGLET NOOPT PM7\nTitle\n'
@@ -180,9 +191,31 @@ def get_energy_of_xyz(xyz_file, tmpdir=''):
             for _ in range(n):
                 line = f.readline().split()
                 f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(*line))
-    call(['/opt/mopac/run_script.sh', os.path.join(tmpdir, xyz_to_mop)])
+    call(['/opt/mopac2/run_mopac', os.path.join(tmpdir, xyz_to_mop)])
     a = get_energy(os.path.join(tmpdir, xyz_to_mop)[:-4]+'.out')
-    shutil.rmtree(tmpdir)
+    if del_flag: shutil.rmtree(tmpdir)
+    return a
+
+
+def get_heat_of_xyz(xyz_file, tmpdir=''):
+    del_flag = False
+    if tmpdir == '':
+        tmpdir = tempfile.mkdtemp()
+        del_flag = True
+    name = os.path.basename(os.path.normpath(xyz_file))
+    xyz_to_mop = os.path.join(tmpdir, name[:-4:] + '.mop')
+    header = ' AUX LARGE CHARGE=0 SINGLET NOOPT PM7\nTitle\n'
+    with open(xyz_file, 'r') as f:
+        with open(os.path.join(tmpdir, xyz_to_mop), 'w') as f_w:
+            f_w.write(header)
+            n = int(f.readline())
+            f.readline()
+            for _ in range(n):
+                line = f.readline().split()
+                f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(*line))
+    call(['/opt/mopac2/run_mopac', os.path.join(tmpdir, xyz_to_mop)])
+    a = get_heat(os.path.join(tmpdir, xyz_to_mop)[:-4]+'.out')
+    if del_flag: shutil.rmtree(tmpdir)
     return a
 
 

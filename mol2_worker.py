@@ -55,9 +55,10 @@ class Molecule():
         self.bonds = {}
         for line in bonds.split('\n')[1::]:
             l = line.split()
-            l = [int(l[0]), int(l[1]), int(l[2]), l[3]]
-            self.bonds.update({l[0]: Bond(l[1], l[2], l[3])})
-            self.bonds[l[0]].set_length(np.linalg.norm(self.atoms[l[1]].position()-self.atoms[l[2]].position()))
+            l = list(map(int, l[:3:]))+[l[3]]
+            self.bonds.update({l[0]: Bond(*l[1::],
+                                          length=np.linalg.norm(self.atoms[l[1]].position()
+                                                                - self.atoms[l[2]].position()))})
 
     def set_n(self, n):
         self.n = n
@@ -77,7 +78,6 @@ class Molecule():
         forces = 1
         forces_next = 0
         bs = bonds_of_paired(self.bonds)
-        # print(dim_structure_reduced)
         while abs(forces_next-forces) > eps ** power_eps:
             apply_force = {}
             for key, item in dim_structure_reduced.items():
@@ -87,7 +87,7 @@ class Molecule():
                 for b in bonds_of_key_atom:
                     another = list(b.connected-{key})[0]
                     apply_force[key] = apply_force[key] - dim_structure_reduced[key]+(dim_structure_reduced[another]
-                                           +self.divider.scube[bs[tuple(sorted([key, another]))][1][key > another]])
+                                           + self.divider.scube[bs[tuple(sorted([key, another]))][1][key > another]])
                 dim_structure_reduced[key] = dim_structure_reduced[key] + eps * apply_force[key]
                 forces, forces_next = forces_next, sum([np.linalg.norm(el) for _, el in apply_force.items()])
         return dim_structure_reduced
@@ -102,7 +102,9 @@ class Molecule():
         bonds = bonds_of_paired(self.bonds)
         bonds_copy = deepcopy(bonds)
         p = [[1, max(key), bonds_copy[key]] for key in bonds_copy.keys() if 1 in key]
+
         while len(p) != 0:
+            print(p)
             cur_key, atom_to_bond, bond_characteristics = p.pop(0)
             if not (atom_to_bond in dim_structure.keys()):
                 coord = self.divider.scube[bond_characteristics[1][cur_key < atom_to_bond]] * bond_characteristics[0]\
@@ -238,11 +240,13 @@ if __name__ == "__main__":
     # bonds = (xyz_names_bonds('Caffein.mol2')[-1])
     # atoms = atoms_and_bonds('Caffein.mol2')
 
-    a = Molecule('./many_opted_mol2s/3a-MnH2-ads-MeOAc_opted.mol2')
+    # a = Molecule('./many_opted_mol2s/3a-MnH2-ads-MeOAc_opted.mol2')
+    a = Molecule('./ordered_mol2/js_exapmle_init.mol2')
 
     a.set_notation()
     before = a.to_positions_array()
     struct = a.from_notation()
+
 
     b = deepcopy(a)
     for k, pos in struct.items():
