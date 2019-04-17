@@ -1,7 +1,7 @@
 import copy
 import numpy as np
 from numpy import arctan2, pi
-from mol2_chain_q import atoms_and_bonds,  bonds_of_paired, xyz_names_bonds, Notation
+from mol2_chain_q import atoms_and_bonds,  bonds_of_paired, Notation
 from mol2_worker import xyz_names_bonds
 
 

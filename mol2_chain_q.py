@@ -1,7 +1,7 @@
 import numpy as np
 import copy
 from quadro_with_rotate_class import Spherical_divider
-from mol2_worker import xyz_names, xyz_names_bonds, Atom, atoms_and_bonds, Bond
+from mol2_worker import xyz_names_bonds, atoms_and_bonds
 from mopac_worker import get_energy_of_mol2
 # from many_mols import molecular_divider, get_notation_many_mols, insert_zero_bonds
 
