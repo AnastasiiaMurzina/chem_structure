@@ -76,16 +76,57 @@ class Molecule():
         xyz_positions_c = copy.deepcopy(xyz_positions)
         return compare_structers(origin, xyz_positions_c)
 
+    def zero_bonds(self):
+        '''
+        :return: pair of atoms with zero bonds
+        '''
+        zero_pairs = []
+        for k, i in self.bonds.items():
+            if i.attr == '0':
+                zero_pairs.append(i.connected)
+        return zero_pairs
+
+    def get_child(self, zero=True):
+        zero_bonds = self.zero_bonds()
+        child = copy.deepcopy(self)
+        for i, j in zero_bonds:
+            for inx, nbond in enumerate(self.notation.notation[i][0]):
+                if nbond[0] == j:
+                    break
+            n_section = np.random.randint(0, len(self.notation.divider.scube))
+            na_section = self.notation.divider.anti_scube[n_section]
+            child.notation.notation[i][0][inx][1] = n_section
+            for inx, nbond in enumerate(self.notation.notation[j][0]):
+                if nbond[0] == i:
+                    break
+            child.notation.notation[j][0][inx][1] = na_section
+
+        ### and change length of bond ### fix it
+
+        # r1 = np.random.randint(1, len(self.notation.bonds.keys())+1)
+        # r2 = np.random.randint(len(self.notation.bonds[r1]))
+        # child.notation.bonds[r1][r2][1] += -0.1 if np.random.randint(1) else 0.1
+
+        return child # change both length but how????
 
 
 if __name__ == '__main__':
-    ln = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_init.mol2')
+    ln = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_init.mol2', n=3)
+    pr = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_finish.mol2', n=3)
+    print('init to finish rmds ', ln.compare_with(pr.to_positions_array()))
     # print(ln.notation.notation)
     # ln = Notation(n=n_param, info_from_file=xyz_names_bonds(file_name + '.mol2'))
     # paired = bonds_of_paired(ln.bonds)
     dim_structure = dimensional_structure(ln.notation, relax=True)
-    print(ln.to_positions_array())
-    print(dim_structure)
-    print(ln.compare_with(np.array([i for _, i in dim_structure.items()])))
+    # print(ln.to_positions_array())
+    # print(ln.compare_with(np.array([i for _, i in dim_structure.items()])))
+
+    ch = ln.get_child()
+    ch_dim = dimensional_structure(ch.notation, relax=True)
+    print('child to finish rmds ', pr.compare_with(np.array([i for _, i in ch_dim.items()])))
+
+    # for _ in range(10):
+
+    print(ln.compare_with(np.array([i for _, i in ch_dim.items()])))
 
     # write_mol2_file('My_' + name + '_' + 'q0.mol2', atoms_info, dim_structure, bonds=paired)
