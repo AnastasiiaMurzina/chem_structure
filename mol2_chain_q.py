@@ -97,25 +97,6 @@ def to_two_ways_bond(one_way_bonds, with_attr=False):
             two_ways.update({i[1]: [i[0]]})
     return two_ways
 
-class Notation():
-    def __init__(self, n, info_from_file):
-        self.divider = Spherical_divider(n=n)
-        bonds, self.atoms = info_from_file
-        positions_copy = copy.deepcopy(self.atoms)
-        self.notation = {}
-        self.bonds = bonds_to_one_way_dict(prepare_bonds(bonds))
-        bonds2 = to_two_ways_bond2(self.bonds, with_attr=True)
-        for key, item in self.atoms.items():
-            cur_p = positions_copy.pop(key).position()
-            connected = [i[0] for i in bonds2[key]]
-            self.notation.update({key: [list([i, self.divider.find_section(cur_p, self.atoms[i].position())]
-                                        for i in connected)]})
-        for key, item in self.bonds.items():
-            for i in range(len(item)):
-                self.bonds[key][i].insert(1, round(np.linalg.norm(self.atoms[key].position() - self.atoms[item[i][0]].position()), 1))
-
-
-
 
 
 ##############################Mol2_preparations###########################################

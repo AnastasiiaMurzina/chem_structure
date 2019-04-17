@@ -1,11 +1,5 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from numpy import arctan2
-from itertools import product
-from copy import deepcopy
-from mpl_toolkits.mplot3d import Axes3D
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
-from colors_from_plots import cnames
 
 
 def cartesian_to_spherical(vector):

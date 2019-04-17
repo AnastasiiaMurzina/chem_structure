@@ -1,6 +1,6 @@
 from berny import Berny, optimize, geomlib
 from berny.solvers import MopacSolver
-from gradient_plotter import log_berny_plotter
+from scr_old.gradient_plotter import log_berny_plotter
 import numpy as np
 import sys
 
