@@ -4,6 +4,7 @@ from mol2_worker import bonds_of_paired, read_mol2, Atom, Bond, xyz_names_bonds,
 from mol2_chain_q import bonds_to_one_way_dict, to_two_ways_bond2, prepare_bonds
 from layouter import *
 import copy
+import matplotlib.pyplot as plt
 
 class Notation():
     def __init__(self, n, info_from_file):
@@ -78,7 +79,7 @@ class Molecule():
 
     def zero_bonds(self):
         '''
-        :return: pair of atoms with zero bonds
+        :return: pair of atoms nums with zero bonds
         '''
         zero_pairs = []
         for k, i in self.bonds.items():
@@ -86,47 +87,88 @@ class Molecule():
                 zero_pairs.append(i.connected)
         return zero_pairs
 
-    def get_child(self, zero=True):
-        zero_bonds = self.zero_bonds()
+    def choose_bond(self):
+        '''
+        :return: pair of atoms nums to change bond
+        '''
+        r1 = np.random.choice([i for i in self.notation.bonds.keys()])
+        r2 = np.random.choice([i[0] for i in self.notation.bonds[r1]])
+        return [{r1, r2}]
+
+    def get_index_of_bond(self, atom_with_bond, atom_to_bond):
+        '''
+        :param atom_with_bond: num of atom with bond
+        :param atom_to_bond: num of atom bonded with atom_with_bond
+        :return: index of atom_to_bond in notation[atom_with_bond]
+        '''
+        for inx, nbond in enumerate(self.notation.notation[atom_with_bond][0]):
+            if nbond[0] == atom_to_bond:
+                return inx
+        return None
+
+    def lazy_bond(self):
+        '''
+        :return: random atom and random index of bonded with it atom
+        '''
+        r1 = np.random.choice([i for i in self.notation.bonds.keys()])
+        r2 = np.random.randint(len(self.notation.bonds[r1]))
+        return r1, r2
+
+    def get_child(self, zero=True, change_length=True, change_section=True):
         child = copy.deepcopy(self)
-        for i, j in zero_bonds:
-            for inx, nbond in enumerate(self.notation.notation[i][0]):
-                if nbond[0] == j:
-                    break
-            n_section = np.random.randint(0, len(self.notation.divider.scube))
-            na_section = self.notation.divider.anti_scube[n_section]
-            child.notation.notation[i][0][inx][1] = n_section
-            for inx, nbond in enumerate(self.notation.notation[j][0]):
-                if nbond[0] == i:
-                    break
-            child.notation.notation[j][0][inx][1] = na_section
+        if zero:
+            bonds_to_change = self.zero_bonds()
+        else:
+            bonds_to_change = self.choose_bond()
 
-        ### and change length of bond ### fix it
+        if change_section:
+            for i, j in bonds_to_change:
+                inx = self.get_index_of_bond(i, j)
+                n_section = np.random.randint(0, len(self.notation.divider.scube))
+                na_section = self.notation.divider.anti_scube[n_section]
+                print(n_section, na_section)
+                child.notation.notation[i][0][inx][1] = n_section
+                inx1 = self.get_index_of_bond(j, i)
+                child.notation.notation[j][0][inx1][1] = na_section
 
-        # r1 = np.random.randint(1, len(self.notation.bonds.keys())+1)
-        # r2 = np.random.randint(len(self.notation.bonds[r1]))
-        # child.notation.bonds[r1][r2][1] += -0.1 if np.random.randint(1) else 0.1
-
+        ### and change length of bond ##
+        if change_length:
+            r1, r2 = self.lazy_bond()
+            child.notation.bonds[r1][r2][1] += -0.1 if np.random.randint(2) else 0.1
         return child # change both length but how????
 
 
 if __name__ == '__main__':
-    ln = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_init.mol2', n=3)
-    pr = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_finish.mol2', n=3)
-    print('init to finish rmds ', ln.compare_with(pr.to_positions_array()))
-    # print(ln.notation.notation)
-    # ln = Notation(n=n_param, info_from_file=xyz_names_bonds(file_name + '.mol2'))
-    # paired = bonds_of_paired(ln.bonds)
-    dim_structure = dimensional_structure(ln.notation, relax=True)
-    # print(ln.to_positions_array())
-    # print(ln.compare_with(np.array([i for _, i in dim_structure.items()])))
-
-    ch = ln.get_child()
-    ch_dim = dimensional_structure(ch.notation, relax=True)
-    print('child to finish rmds ', pr.compare_with(np.array([i for _, i in ch_dim.items()])))
-
-    # for _ in range(10):
-
-    print(ln.compare_with(np.array([i for _, i in ch_dim.items()])))
-
-    # write_mol2_file('My_' + name + '_' + 'q0.mol2', atoms_info, dim_structure, bonds=paired)
+    om = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_init.mol2', n=2)
+    print(om.notation.divider.scube)
+    print(om.notation.divider.anti_scube)
+    # n = 5
+    # # ln = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/3a.mol2', n=n)
+    # ln = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_init.mol2', n=n)
+    # # pr = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/4_opted.mol2', n=n)
+    # pr = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_finish.mol2', n=n)
+    # c1 = ln.compare_with(pr.to_positions_array())
+    # print('n=2, zero_bonds, all length changes')
+    # print('init to finish rmds ', c1)
+    # dim_structure = dimensional_structure(ln.notation, relax=True)
+    # # paths = []
+    # # for _ in range(10):
+    # path_rmsd = [c1]
+    #     # ln = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_init.mol2', n=n)
+    # for _ in range(100):
+    #     ch = ln.get_child(zero=False, change_length=True)
+    #     ch_dim = dimensional_structure(ch.notation, relax=True)
+    #     compared = pr.compare_with(np.array([i for _, i in ch_dim.items()]))
+    #     # if compared-path_rmsd[-1] < 0.75:
+    #     #     print('child to finish rmds ', compared)
+    #     path_rmsd.append(compared)
+    #     del ln
+    #     ln = copy.deepcopy(ch)
+    # # paths.append(path_rmsd)
+    # # print(ln.compare_with(np.array([i for _, i in ch_dim.items()])))
+    # # for path in paths:
+    # #     plt.plot(list(range(len(path))), path)
+    # plt.plot(list(range(len(path_rmsd))), path_rmsd)
+    # plt.title('n={}, all changes'.format(str(n)))
+    # plt.show()
+    # # write_mol2_file('My_' + name + '_' + 'q0.mol2', atoms_info, dim_structure, bonds=paired)

@@ -50,5 +50,5 @@ class Spherical_divider():
     def set_anti_scube(self):
         self.anti_scube = {}
         for i, j in enumerate(self.scube):
-            self.anti_scube.update({i: self.find_section(-j)})
+            self.anti_scube.update({i: self.find_section(j)})
 
