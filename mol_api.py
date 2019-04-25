@@ -87,13 +87,16 @@ class Molecule():
                 zero_pairs.append(i.connected)
         return zero_pairs
 
-    def choose_bond(self):
+    def choose_bond(self, n=1):
         '''
         :return: pair of atoms nums to change bond
         '''
-        r1 = np.random.choice([i for i in self.notation.bonds.keys()])
-        r2 = np.random.choice([i[0] for i in self.notation.bonds[r1]])
-        return [{r1, r2}]
+        bs = []
+        for _ in range(n):
+            r1 = np.random.choice([i for i in self.notation.bonds.keys()])
+            r2 = np.random.choice([i[0] for i in self.notation.bonds[r1]])
+            bs.append({r1, r2})
+        return bs
 
     def get_index_of_bond(self, atom_with_bond, atom_to_bond):
         '''
@@ -114,61 +117,74 @@ class Molecule():
         r2 = np.random.randint(len(self.notation.bonds[r1]))
         return r1, r2
 
-    def get_child(self, zero=True, change_length=True, change_section=True):
+    def get_child(self, zero=True, change_length=True, change_section=True, one_time_many=1):
         child = copy.deepcopy(self)
         if zero:
             bonds_to_change = self.zero_bonds()
         else:
-            bonds_to_change = self.choose_bond()
+            bonds_to_change = self.choose_bond(n=one_time_many)
 
         if change_section:
             for i, j in bonds_to_change:
                 inx = self.get_index_of_bond(i, j)
                 n_section = np.random.randint(0, len(self.notation.divider.scube))
                 na_section = self.notation.divider.anti_scube[n_section]
-                print(n_section, na_section)
                 child.notation.notation[i][0][inx][1] = n_section
                 inx1 = self.get_index_of_bond(j, i)
                 child.notation.notation[j][0][inx1][1] = na_section
 
-        ### and change length of bond ##
-        if change_length:
-            r1, r2 = self.lazy_bond()
-            child.notation.bonds[r1][r2][1] += -0.1 if np.random.randint(2) else 0.1
+        if change_length: # it has collisions
+            if zero:
+                pass
+            else:
+                r1, r2 = self.lazy_bond()
+                child.notation.bonds[r1][r2][1] += -0.1 if np.random.randint(2) else 0.1
         return child # change both length but how????
 
+def searcher(substrat, product,zero_bonds_only=False,
+             length_change=True, length_path=10):
+    '''
+    :param substrat: type: Molecule,
+    :param product: type: Molecule,
+    :param t_times: allowed rmsd increase
+    :return: path of rmsd
+    '''
+    # c1 = substrat.compare_with(product.to_positions_array())
+    dim_structure = dimensional_structure(substrat.notation, relax=True)
+    c1 = product.compare_with(np.array([i for _, i in dim_structure.items()]))
+    paths = [c1]
+    st = copy.deepcopy(substrat)
+    while len(paths) < length_path:
+    # while paths[-1] > 0.25:
+
+        ch = st.get_child(zero=zero_bonds_only, change_length=length_change)
+        ch_dim = dimensional_structure(ch.notation, relax=True)
+        compared = pr.compare_with(np.array([i for _, i in ch_dim.items()]))
+        if 1-np.random.rand() < c1/compared:
+            paths.append(compared)
+            print('structure is ', ch_dim)
+            del st
+            st = copy.deepcopy(ch)
+    return paths
 
 if __name__ == '__main__':
-    om = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_init.mol2', n=2)
-    print(om.notation.divider.scube)
-    print(om.notation.divider.anti_scube)
-    # n = 5
-    # # ln = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/3a.mol2', n=n)
-    # ln = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_init.mol2', n=n)
-    # # pr = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/4_opted.mol2', n=n)
-    # pr = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_finish.mol2', n=n)
-    # c1 = ln.compare_with(pr.to_positions_array())
-    # print('n=2, zero_bonds, all length changes')
-    # print('init to finish rmds ', c1)
-    # dim_structure = dimensional_structure(ln.notation, relax=True)
-    # # paths = []
-    # # for _ in range(10):
-    # path_rmsd = [c1]
-    #     # ln = Molecule('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_init.mol2', n=n)
-    # for _ in range(100):
-    #     ch = ln.get_child(zero=False, change_length=True)
-    #     ch_dim = dimensional_structure(ch.notation, relax=True)
-    #     compared = pr.compare_with(np.array([i for _, i in ch_dim.items()]))
-    #     # if compared-path_rmsd[-1] < 0.75:
-    #     #     print('child to finish rmds ', compared)
-    #     path_rmsd.append(compared)
-    #     del ln
-    #     ln = copy.deepcopy(ch)
-    # # paths.append(path_rmsd)
-    # # print(ln.compare_with(np.array([i for _, i in ch_dim.items()])))
-    # # for path in paths:
-    # #     plt.plot(list(range(len(path))), path)
-    # plt.plot(list(range(len(path_rmsd))), path_rmsd)
-    # plt.title('n={}, all changes'.format(str(n)))
+    # params = {'n': 1,
+    #           'reaction': 'mopac_example', #'3a->4'
+    #           }
+    n = 2
+    reaction = 'mopac_example' # '3a->4' #
+    if reaction == '3a->4':
+        ln = Molecule('./ordered_mol2/3a.mol2', n=n)
+        pr = Molecule('./ordered_mol2/4_opted.mol2', n=n)
+    else:
+        ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
+        pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
+    path = searcher(ln, pr)
+    print(path)
+    # print(ln.compare_with(pr.to_positions_array()))
+    # print(pr.compare_with(np.array([i for _, i in dimensional_structure(ln.notation).items()])))
+
+    # plt.plot(list(range(len(paths))), paths)
+    # plt.title('reaction {},n={}, all changes'.format(reaction, str(n)))
     # plt.show()
-    # # write_mol2_file('My_' + name + '_' + 'q0.mol2', atoms_info, dim_structure, bonds=paired)
+    # write_mol2_file('My_' + name + '_' + 'q0.mol2', atoms_info, dim_structure, bonds=paired)
