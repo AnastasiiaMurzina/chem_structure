@@ -1,10 +1,14 @@
-import numpy as np
-from quadro_with_rotate_class import Spherical_divider
-from mol2_worker import bonds_of_paired, read_mol2, Atom, Bond, xyz_names_bonds, compare_structers
-from mol2_chain_q import bonds_to_one_way_dict, to_two_ways_bond2, prepare_bonds
-from layouter import *
+import os
 import copy
-import matplotlib.pyplot as plt
+from tempfile import mkdtemp
+from shutil import rmtree
+
+from layouter import *
+from mol2_chain_q import bonds_to_one_way_dict, to_two_ways_bond2, prepare_bonds
+from mol2_worker import read_mol2, Atom, Bond, xyz_names_bonds, compare_structers
+from mopac_worker import get_heat_of_xyz
+from quadro_with_rotate_class import Spherical_divider
+
 
 class Notation():
     def __init__(self, n, info_from_file):
@@ -22,14 +26,16 @@ class Notation():
         for key, item in self.bonds.items():
             for i in range(len(item)):
                 self.bonds[key][i].insert(1, round(np.linalg.norm(self.atoms[key].position() - self.atoms[item[i][0]].position()), 1))
+        for key in self.bonds.keys():
+            self.bonds[key] = sorted(self.bonds[key])
 
-    def diff(self, to_the_notation, b_diffs=False, s_diffs=False, l_diffs=False):
+    def diff(self, to_the_notation, b_diffs=False):
         '''
         TODO later it'd return the differents and check nums of atoms more correctly
         :param to_the_notation: compare with this one notation
         :param b_diffs: SOON
-        :param s_diffs: SOON
-        :param l_diffs: SOON
+        :param s_diffs:
+        :param l_diffs:
         :return: int of different bonds, int of different section, sum of different bonds lengths
         '''
         if self.divider.n != to_the_notation.divider.n:
@@ -90,32 +96,75 @@ class Notation():
         if self.divider.n != to_the_notation.divider.n:
             print("Different dividers!")
             return
-        # length_diff = 0
         l_d = []
         for k, i in self.bonds.items():
             if to_the_notation.bonds.get(k):
                 b2 = sorted(to_the_notation.bonds[k])
             else:
                 continue
-            i = sorted(i)
+            # i = sorted(i)
             if len(i) == len(b2):
                 for inx, b01 in enumerate(zip(i, b2)):
-                    b01, b02 = b01
-                    if b01[0] == b02[0]:
-                        # length_diff += abs(b02[1]-b01[1])
-                        l_d.append([k, inx, b02])
+                    b_1, b_2 = b01
+                    if b_1[0] == b_2[0]:
+                        l_d.append([k, inx, b_2])
             # else: calc smth else
         return l_d
 
-    def s_change(self, to_the_notation):
+    def get_heat(self, tmp=''):
+        del_flag = False
+        names = [i.name for _, i in self.atoms.items()]
+        if tmp == '':
+            tmp = mkdtemp()
+            del_flag = True
+        ds = [i for _, i in dimensional_structure(self).items()]
+        file = os.path.join(tmp, 'to_calc_heat.xyz')
+        with open(file, 'w') as f:
+            n = len(names)
+            f.write(str(n) + '\n\n')
+            for ix in range(n):
+                f.write('{}\t{}\t{}\t{}\n'.format(names[ix], *list(map(str, ds[ix]))))
+        if del_flag: rmtree(tmp)
+        return get_heat_of_xyz(file, tmpdir=tmp)
+
+
+    def s_change(self, to_the_notation, follow_energy=False, sh=False, keep_change=False):
+        if follow_energy:
+            ens = []
+            tmp = mkdtemp()
         s_d = self.s_diff(to_the_notation)
+        if sh: np.random.shuffle(s_d)
         for k_1, inx, j in s_d:
             self.notation[k_1][0][inx][1] = j
+            if follow_energy:
+                ens.append(self.get_heat(tmp=tmp))
+        if follow_energy:
+            rmtree(tmp)
+            return (ens, s_d) if keep_change else ens
 
-    def l_change(self, to_the_notation):
+    def s_change_step(self, to_the_notation):
+        s_d = self.s_diff(to_the_notation)
+        k_1, inx, j = s_d[0]
+        self.notation[k_1][0][inx][1] = j
+
+    def l_change_step(self, to_the_notation):
         l_d = self.l_diff(to_the_notation)
+        k_1, inx, j = l_d[0] #TODO 0 will be a random index
+        self.bonds[k_1][inx][1] = j[1]
+
+    def l_change(self, to_the_notation, follow_energy=False, sh=False, keep_change=False):
+        if follow_energy:
+            ens = []
+            tmp = mkdtemp()
+        l_d = self.l_diff(to_the_notation)
+        if sh: np.random.shuffle(l_d)
         for k_1, inx, j in l_d:
             self.bonds[k_1][inx][1] = j[1]
+            if follow_energy:
+                ens.append(self.get_heat(tmp=tmp))
+        if follow_energy:
+            rmtree(tmp)
+            return (ens, l_d) if keep_change else ens
 
 
 class Molecule():
@@ -136,13 +185,20 @@ class Molecule():
             self.bonds.update({l[0]: Bond(*l[1::],
                                           length=np.linalg.norm(self.atoms[l[1]].position()
                                                                 - self.atoms[l[2]].position()))})
+
+    def refresh_dimensional(self):
+        ds = self.get_dimensional()
+        for k, i in ds.items():
+            self.atoms[k].x = i[0]
+            self.atoms[k].y = i[1]
+            self.atoms[k].z = i[2]
+
     def set_n(self, n):
         self.n = n
         self.notation = Notation(n=n, info_from_file=xyz_names_bonds(self.mol2file))
 
     def get_dimensional(self, relax=True):
         return dimensional_structure(self.notation, relax=relax)
-
 
     def to_mol2(self, mol2file):
         with open(mol2file, 'w') as f:
@@ -152,7 +208,6 @@ class Molecule():
             f.write('@<TRIPOS>BOND\n')
             for k, bond in self.bonds.items():
                 f.write('\t{}\t{}\t{}\t{}\n'.format(k, *bond.connected, bond.attr))
-
 
     def to_xyz(self, xyzfile):
         with open(xyzfile, 'w') as f:
@@ -264,13 +319,24 @@ def searcher(substrat, product,zero_bonds_only=False,
             st = copy.deepcopy(ch)
     return paths
 
+def random_search(reactant, product):
+    '''
+    :param reactant:
+    :param product:
+    :return: energies_path and length of sections changes
+    '''
+    s = reactant.notation.s_change(product.notation, follow_energy=True, sh=True)
+    l = reactant.notation.l_change(product.notation, follow_energy=True, sh=True)
+    return s+l, len(s)
+
+
 if __name__ == '__main__':
     # params = {'n': 1,
     #           'reaction': 'mopac_example', #'3a->4'
     #           }
-    n = 2
-    # reaction = 'mopac_example' # '3a->4' #
-    reaction = '3a->4' #
+    n = 10
+    reaction = 'mopac_example' # '3a->4' #
+    # reaction = '3a->4' #
     if reaction == '3a->4':
         ln = Molecule('./ordered_mol2/3a.mol2', n=n)
         pr = Molecule('./ordered_mol2/4_opted.mol2', n=n)
@@ -282,18 +348,49 @@ if __name__ == '__main__':
     # print(ln.notation.diff(pr.notation))
     # print('reactant with orignal reactant')
     # print(ln.compare_with(np.array([i for _, i in dimensional_structure(ln.notation).items()])))
-    print('before original pr with orignal reactant')
-    print(compare_structers(ln.to_positions_array(), pr.to_positions_array()))
+    # print('before original pr with orignal reactant')
+    # print(compare_structers(ln.to_positions_array(), pr.to_positions_array()))
     # print('before original pr with dim_struct of reactant')
     # print(pr.compare_with(np.array([i for _, i in dimensional_structure(ln.notation).items()])))
     # print('before dim_structure of pr with dim_struct of reactant')
     # print(compare_structers(np.array([i for _, i in dimensional_structure(ln.notation).items()]), np.array([i for _, i in dimensional_structure(pr.notation).items()])))
     # print('product with product')
     # print(pr.compare_with(np.array([i for _, i in dimensional_structure(pr.notation).items()])))
-    print(ln.notation.bonds)
-    ln.notation.l_change(pr.notation)
-    print(ln.notation.bonds)
-    print(dimensional_structure(ln.notation))
+    # name_heat = reaction + 'start.xyz'
+    # pr.to_xyz(name_heat)
+    # print('before', get_heat_of_xyz(name_heat))
+    # pr.refresh_dimensional()
+    # name_heat = reaction+'start.xyz'
+    # pr.to_xyz(name_heat)
+    # print('after', get_heat_of_xyz(name_heat))
+    print('length+sections')
+    print(ln.notation.s_change(pr.notation, follow_energy=True, sh=True))
+    # print(ln.notation.l_change(pr.notation, follow_energy=True))
+    # print(ln.notation.s_change(pr.notation, follow_energy=True))
+
+    # n = 10
+    # reaction = 'mopac_example'  # '3a->4' #
+    # # reaction = '3a->4' #
+    # if reaction == '3a->4':
+    #     ln = Molecule('./ordered_mol2/3a.mol2', n=n)
+    #     pr = Molecule('./ordered_mol2/4_opted.mol2', n=n)
+    # else:
+    #     ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
+    #     pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
+    # print('sections+length')
+    # print(ln.notation.s_change(pr.notation, follow_energy=True))
+    # print(ln.notation.l_change(pr.notation, follow_energy=True))
+
+    # print(ln.notation.s_diff(pr.notation))
+    # print(ln.notation.l_diff(pr.notation))
+
+    # for k, i in pr.notation.bonds.items():
+    #     print('atom ', k)
+    #     print('product', i)
+    #     print('reactant', ln.notation.bonds[k])
+    # print(pr.notation.bonds)
+    # print(ln.notation.l_diff(pr.notation))
+    # print(dimensional_structure(ln.notation))
 
     # print(compare_structers(np.array([i for _, i in dimensional_structure(ln.notation).items()]), np.array([i for _, i in dimensional_structure(pr.notation).items()])))
     # print(pr.compare_with(np.array([i for _, i in dimensional_structure(ln.notation).items()])))
