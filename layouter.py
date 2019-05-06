@@ -60,7 +60,7 @@ def check(notation, dim_structure_reduced, eps=0.01):
 
 def dimensional_structure(notation, relax=True):
     '''
-    :param notation: Notation with first atom with unique basis for every bond
+    :param notation: Notation #TODO write more
     with length
     :return: xyz-info
     '''
