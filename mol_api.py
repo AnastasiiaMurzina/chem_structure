@@ -15,20 +15,24 @@ class Notation:
     def __init__(self, n, info_from_file):
         self.divider = Spherical_divider(n=n)
         bonds, self.atoms = info_from_file
-        positions_copy = copy.deepcopy(self.atoms)
         self.notation = {}
         self.bonds = bonds_to_one_way_dict(prepare_bonds(bonds))
+        self.set_notation(copy.deepcopy(self.atoms))
+
+    def set_notation(self, positions_copy):
         bonds2 = to_two_ways_bond2(self.bonds, with_attr=True)
         for key, item in self.atoms.items():
             cur_p = positions_copy.pop(key).position()
             connected = [i[0] for i in bonds2[key]]
             self.notation.update({key: [list([i, self.divider.find_section(cur_p, self.atoms[i].position())]
-                                        for i in connected)]})
+                                             for i in connected)]})
         for key, item in self.bonds.items():
             for i in range(len(item)):
-                self.bonds[key][i].insert(1, round(np.linalg.norm(self.atoms[key].position() - self.atoms[item[i][0]].position()), 1))
+                self.bonds[key][i].insert(1, round(
+                    np.linalg.norm(self.atoms[key].position() - self.atoms[item[i][0]].position()), 1))
         for key in self.bonds.keys():
             self.bonds[key] = sorted(self.bonds[key])
+
 
     def difference_of_bonds(self, to_the_notation):
         bonds_diffs = 0
@@ -84,7 +88,6 @@ class Notation:
                         length_diff += abs(b02[1]-b01[1])
                     # else calc smth else
         return length_diff
-
 
     def diff(self, to_the_notation):
         '''
@@ -172,12 +175,14 @@ class Notation:
 
     def s_change_step(self, to_the_notation):
         s_d = self.s_diff(to_the_notation)
-        k_1, inx, j = s_d[0]
+        inx = np.random.random(len(s_d))
+        k_1, inx, j = s_d[inx]
         self.notation[k_1][0][inx][1] = j
 
     def l_change_step(self, to_the_notation):
         l_d = self.l_diff(to_the_notation)
-        k_1, inx, j = l_d[0] #TODO 0 will be a random index
+        inx = np.random.random(len(l_d))
+        k_1, inx, j = l_d[inx]
         self.bonds[k_1][inx][1] = j[1]
 
     def l_change(self, to_the_notation, follow_energy=False, sh=False, keep_change=False):
@@ -394,9 +399,13 @@ def random_to_the_aim_search(reactant, product):
     '''
     :return: energies_path and length of sections changes
     '''
-    s = reactant.notation.s_change(product.notation, follow_energy=True, sh=True)
-    l = reactant.notation.l_change(product.notation, follow_energy=True, sh=True)
-    return s+l, len(s)
+
+    #########two halves of random path#########
+    # s = reactant.notation.s_change(product.notation, follow_energy=True, sh=True)
+    # l = reactant.notation.l_change(product.notation, follow_energy=True, sh=True)
+    # return s+l, len(s)
+    ###########################################
+
 
 
 if __name__ == '__main__':
