@@ -25,6 +25,10 @@ def bonds_of_paired(bonds):
 
 
 def bonds_to_one_way_dict(bonds):
+    '''
+    :param bonds:
+    :return: {min_atom_num: [[big_atom_num, length, attr], [bigger_atom_num, length, attr],...]. }
+    '''
     d = {}
     for i in bonds:
         if d.get(i[0]):

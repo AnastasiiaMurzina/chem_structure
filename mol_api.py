@@ -2,15 +2,16 @@ import os
 import copy
 from tempfile import mkdtemp
 from shutil import rmtree
+import matplotlib.pyplot as plt
 
 from layouter import *
 from mol2_chain_q import bonds_to_one_way_dict, to_two_ways_bond2, prepare_bonds
-from mol2_worker import read_mol2, Atom, Bond, xyz_names_bonds, compare_structers
+from mol2_worker import read_mol2, Atom, xyz_names_bonds, compare_structers, Bond
 from mopac_worker import get_heat_of_xyz
 from quadro_with_rotate_class import Spherical_divider
 
 
-class Notation():
+class Notation:
     def __init__(self, n, info_from_file):
         self.divider = Spherical_divider(n=n)
         bonds, self.atoms = info_from_file
@@ -29,33 +30,48 @@ class Notation():
         for key in self.bonds.keys():
             self.bonds[key] = sorted(self.bonds[key])
 
-    def diff(self, to_the_notation, b_diffs=False):
-        '''
-        TODO later it'd return the differents and check nums of atoms more correctly
-        :param to_the_notation: compare with this one notation
-        :param b_diffs: SOON
-        :param s_diffs:
-        :param l_diffs:
-        :return: int of different bonds, int of different section, sum of different bonds lengths
-        '''
-        if self.divider.n != to_the_notation.divider.n:
-            print("Different dividers!")
-            return
-        sections_diffs = 0
+    def difference_of_bonds(self, to_the_notation):
         bonds_diffs = 0
-        length_diff = 0
         for k_1, i_1 in self.notation.items():
             k_2 = k_1
-            i_2 = to_the_notation.notation[k_2]
-            if len(i_1[0]) == len(i_2[0]):
-                for i, j in zip(i_1[0], i_2[0]):
-                    if i[0] != j[0]:
-                        bonds_diffs += 1
-                        print(k_1, i,j)
-                    elif i[1] != j[1]:
+            i_2 = to_the_notation.notation.get(k_2) # also it may be bond only in product...
+            if i_2 is None:
+                bonds_diffs += len(i_1[0])
+                continue
+            inx1, inx2 = 0, 0
+            while inx1 < len(i_1[0]) and inx2 < len(i_2[0]):
+                f, s = i_1[0][inx1], i_2[0][inx2]
+                if f[0] == s[0]:
+                    inx2 += 1
+                    inx1 += 1
+                else:
+                    bonds_diffs += 1
+                    if f[0] > s[0]: inx2 += 1
+                    else: inx1 += 1
+        return bonds_diffs
+
+    def difference_of_sections(self, to_the_notation):
+        sections_diffs = 0
+        for k_1, i_1 in self.notation.items():
+            k_2 = k_1
+            i_2 = to_the_notation.notation.get(k_2)  # also it may be bond only in product...
+            if i_2 is None:
+                continue
+            inx1, inx2 = 0, 0
+            while inx1 < len(i_1[0]) and inx2 < len(i_2[0]):
+                f, s = i_1[0][inx1], i_2[0][inx2]
+                if f[0] == s[0]:
+                    if f[1] != s[1]:
                         sections_diffs += 1
-            else:
-                bonds_diffs += abs(len(i_2)-len(i_1))
+                    inx2 += 1
+                    inx1 += 1
+                else:
+                    if f[0] > s[0]: inx2 += 1
+                    else: inx1 += 1
+        return sections_diffs
+
+    def difference_of_lengths(self, to_the_notation):
+        length_diff = 0
         for k, i in self.bonds.items():
             if to_the_notation.bonds.get(k):
                 b2 = sorted(to_the_notation.bonds[k])
@@ -66,8 +82,20 @@ class Notation():
                 for b01, b02 in zip(i, b2):
                     if b01[0] == b02[0]:
                         length_diff += abs(b02[1]-b01[1])
-            # else: calc smth else
-        return bonds_diffs, sections_diffs, length_diff
+                    # else calc smth else
+        return length_diff
+
+
+    def diff(self, to_the_notation):
+        '''
+        :param to_the_notation: compare with this one notation
+        :return: int of different bonds, int of different section, sum of different bonds lengths
+        '''
+        if self.divider.n != to_the_notation.divider.n:
+            print("Different dividers!")
+            return
+        return self.difference_of_bonds(to_the_notation), self.difference_of_sections(to_the_notation),\
+               self.difference_of_lengths(to_the_notation)
 
     def s_diff(self, to_the_notation):
         '''
@@ -167,7 +195,7 @@ class Notation():
             return (ens, l_d) if keep_change else ens
 
 
-class Molecule():
+class Molecule:
     def __init__(self, mol2file='', n=5):
         self.atoms = {}
         self.n = n
@@ -178,11 +206,11 @@ class Molecule():
             self.atoms.update({int(l[0]): Atom(l[1], *l[5::])})
             self.atoms[int(l[0])].set_xyz(*list(map(float, l[2:5:])))
         self.notation = Notation(n=self.n, info_from_file=xyz_names_bonds(self.mol2file))
-        self.bonds = {}
+        self.bonds_from_mol2 = {}
         for line in bonds.split('\n')[1::]:
             l = line.split()
             l = list(map(int, l[:3:]))+[l[3]]
-            self.bonds.update({l[0]: Bond(*l[1::],
+            self.bonds_from_mol2.update({l[0]: Bond(*l[1::],
                                           length=np.linalg.norm(self.atoms[l[1]].position()
                                                                 - self.atoms[l[2]].position()))})
 
@@ -258,7 +286,7 @@ class Molecule():
                 return inx
         return None
 
-    def lazy_bond(self):
+    def atom_and_bonded_with_it(self):
         '''
         :return: random atom and random index of bonded with it atom
         '''
@@ -286,9 +314,21 @@ class Molecule():
             if zero:
                 pass
             else:
-                r1, r2 = self.lazy_bond()
+                r1, r2 = self.atom_and_bonded_with_it()
                 child.notation.bonds[r1][r2][1] += -0.1 if np.random.randint(2) else 0.1
         return child # change both length but how????
+
+    def mutation(self, bond_exist=True, length_change=0.5):
+        mutant = copy.deepcopy(self)
+        a1, a2 = self.atom_and_bonded_with_it()
+        if np.random.random() < 0.5:
+            n_section = np.random.randint(0, len(self.notation.divider.scube))
+            mutant.notation.notation[a1][0][a2][1] = n_section
+        else:
+            dl = np.random.normal(0, 0.5, 1)[0]
+            mutant.notation.bonds[a1][a2][1] = mutant.notation.bonds[a1][a2][1] + round(dl, 1)
+        return mutant
+
 
 def searcher(substrat, product,zero_bonds_only=False,
              length_change=True, length_path=10):
@@ -319,10 +359,39 @@ def searcher(substrat, product,zero_bonds_only=False,
             st = copy.deepcopy(ch)
     return paths
 
-def random_search(reactant, product):
+def real_random_path(reactant, product):
+    mut = copy.deepcopy(reactant)
+    d = reactant.notation.diff(product.notation)
+    msd = compare_structers(mut.to_positions_array(), product.to_positions_array())
+    mut_pr = reactant.mutation()
+    mut_pr.refresh_dimensional()
+    d_pr = mut_pr.notation.diff(product.notation)
+    msd_pr = compare_structers(mut_pr.to_positions_array(), product.to_positions_array())
+    msds = [msd]
+    print('initial msd', msd, 'd', d)
+    print('rmsd accept probability')
+    # print('length accept probability')
+    for _ in range(100):
+        if d_pr[1] < d[1] or d_pr[2] < d[2] or np.random.random() < np.exp(-(d_pr[2]/d[2])):
+        # if d_pr[1] < d[1] or d_pr[2] < d[2] or np.random.random() < np.exp(-np.exp((msd_pr/msd)**2)):
+            mut = mut_pr
+            d = d_pr
+            msd = msd_pr
+            mut_pr = mut.mutation()
+            mut_pr.refresh_dimensional()
+            d_pr = mut_pr.notation.diff(product.notation)
+            msd_pr = compare_structers(mut_pr.to_positions_array(), product.to_positions_array())
+            msds.append(msd)
+            print(msd)
+    print('final msd', msd, 'd', d)
+    plt.plot(list(range(len(msds))), msds)
+    plt.show()
+
+
+
+
+def random_to_the_aim_search(reactant, product):
     '''
-    :param reactant:
-    :param product:
     :return: energies_path and length of sections changes
     '''
     s = reactant.notation.s_change(product.notation, follow_energy=True, sh=True)
@@ -343,8 +412,11 @@ if __name__ == '__main__':
     else:
         ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
         pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
-    # path = searcher(ln, pr)
-    # print(path)
+
+    print(ln.notation.diff(pr.notation))
+
+    # real_random_path(ln, pr)
+    # print(ln.mutation(pr))
     # print(ln.notation.diff(pr.notation))
     # print('reactant with orignal reactant')
     # print(ln.compare_with(np.array([i for _, i in dimensional_structure(ln.notation).items()])))
@@ -362,9 +434,6 @@ if __name__ == '__main__':
     # pr.refresh_dimensional()
     # name_heat = reaction+'start.xyz'
     # pr.to_xyz(name_heat)
-    # print('after', get_heat_of_xyz(name_heat))
-    print('length+sections')
-    print(ln.notation.s_change(pr.notation, follow_energy=True, sh=True))
     # print(ln.notation.l_change(pr.notation, follow_energy=True))
     # print(ln.notation.s_change(pr.notation, follow_energy=True))
 
