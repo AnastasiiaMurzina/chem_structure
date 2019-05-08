@@ -258,13 +258,13 @@ class Molecule:
         if self.check_c1_section_is_free(c1_bonds, section):
             for inx, el in enumerate(c1_bonds):
                 if el[0] == c2:
-                    # if bond exists let's change section
-                    el[1] = section
+                    # if bond exists let's delete
+                    c1_bonds.pop(inx)
+                    return -1
                 elif el[0] > c2:
                     return inx
+            return len(c1_bonds)
         else: return -1
-
-
 
     def get_dimensional(self, relax=True):
         return dimensional_structure(self.notation, relax=relax)
@@ -335,9 +335,10 @@ class Molecule:
         r2 = np.random.randint(len(self.notation.bonds[r1]))
         return r1, r2
 
-    def get_child(self, zero=True, change_length=True, change_section=True, one_time_many=1):
+    def get_child(self, zero=True, change_length=True,
+                  change_section=True, add_or_remove=True, one_time_many=1):
         child = copy.deepcopy(self)
-        if zero:
+        if zero: #TODO fix zero if it needs...
             bonds_to_change = self.zero_bonds()
         else:
             bonds_to_change = self.choose_bond(n=one_time_many)
@@ -357,21 +358,27 @@ class Molecule:
             else:
                 r1, r2 = self.atom_and_bonded_with_it()
                 child.notation.bonds[r1][r2][1] += -0.1 if np.random.randint(2) else 0.1
-                print(child.notation.bonds[r1]) #TODO fix here
-        return child # change both length but how???? does it need?
+        if add_or_remove:
+            a1, a2 = np.random.choice(range(len(self.atoms)), 2, replace=False) + np.array([1,1])
+            self.add_bond(a1, a2, round(np.random.normal(1.1, 0.3), 2), np.random.randint(len(self.notation.divider.scube)))
+        return child
 
-    def mutation(self, bond_exist=True, length_change=0.5): #TODO bond add mutation
+    def mutation(self, bond_exist=True, length_change=0.5):
         mutant = copy.deepcopy(self)
         a1, a2 = self.atom_and_bonded_with_it()
-        if np.random.random() < 0.5:
+        choi = np.random.random()
+        if choi < 0.33:
             n_section = np.random.randint(0, len(self.notation.divider.scube))
             while not self.check_c1_section_is_free(self.notation.notation[a1][0], n_section):
                 n_section = np.random.randint(0, len(self.notation.divider.scube))
             mutant.notation.notation[a1][0][a2][1] = n_section
-        else:
+        elif choi > 0.67:
             dl = np.random.normal(0, 0.5, 1)[0]
             mutant.notation.bonds[a1][a2][1] = mutant.notation.bonds[a1][a2][1] + round(dl, 1)
-            #TODO fix here symmetric
+        else:
+            b1, b2 = sorted(np.random.choice(range(len(self.atoms)), 2) + np.array([1, 1]))
+            mutant.add_bond(b1, b2, round(np.random.normal(1.1, 0.3), 2),
+                          np.random.randint(len(mutant.notation.divider.scube)))
         return mutant
 
 
@@ -476,7 +483,8 @@ if __name__ == '__main__':
         pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
         pr.refresh_dimensional()
     # p, ms = random_to_the_aim_search(ln, pr)
-    ln.add_bond(3, 4, 1.1, 255)
+    here = real_random_path(ln, pr)
+    print(here)
     # print(max(p))
     # print(p)
     #
