@@ -24,8 +24,8 @@ class Notation:
         for key, item in self.atoms.items():
             cur_p = positions_copy.pop(key).position()
             connected = [i[0] for i in bonds2[key]]
-            self.notation.update({key: [list([i, self.divider.find_section(cur_p, self.atoms[i].position())]
-                                             for i in connected)]})
+            self.notation.update({key: {i: self.divider.find_section(cur_p, self.atoms[i].position())
+                                             for i in connected}})
         for key, item in self.bonds.items():
             for i in range(len(item)):
                 self.bonds[key][i].insert(1, round(

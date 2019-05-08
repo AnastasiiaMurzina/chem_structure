@@ -67,15 +67,20 @@ def dimensional_structure(notation, relax=True):
     div = notation.divider.scube
     lengths = bonds_of_paired(notation.bonds)
     bonds_l = copy.deepcopy(notation.notation) # warning - it was error in other dim_structure builders
+    print(bonds_l)
     first_atom = min(bonds_l.keys())
     dim_structure = {first_atom: np.array([0, 0, 0])}
-    p = bonds_l[first_atom]
+    p = [list(bonds_l[first_atom].keys())]
     bonds_copy = copy.deepcopy(bonds_l)
-    p.insert(0, first_atom)  # p[0] - current atom, p[1] - bonds, p[2] - basis of p[0] atom
+    p.insert(0, first_atom)  # p[0] - current atom, p[1] - bonds
     p = [p]
+    print(p[0])
     while len(p) != 0:
         cur_key, bonds = p.pop(0)
-        for i in bonds:  # build bonds f    or cur_key atom
+        print(cur_key)
+        print(bonds)
+        for i in bonds:  # build bonds for cur_key atom
+            print(i)
             if not (i[0] in dim_structure):  # if we don't have position:
                 coord = div[i[1]]*(lengths.get(tuple(sorted([cur_key, i[0]])))[0]) + dim_structure[cur_key]
                 dim_structure.update({i[0]: coord})
