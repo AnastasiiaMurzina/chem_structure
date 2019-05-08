@@ -234,13 +234,23 @@ class Molecule:
         :param c1, c2: c1 < c2
         :param attr: string_describe
         '''
+        asection = self.notation.divider.anti_scube[section]
+        if self.notation.notation.get(c1) == None:
+            self.notation.notation.update({c1: [[]]})
+        if self.notation.notation.get(c2) == None:
+            self.notation.notation.update({c2: [[]]})
         c1_b = self.notation.notation[c1][0]
-        if c1_b:
-            place = self.place_and_check_to_insert_bond(c1_b, c2, section)
-            if place != -1:
-                self.notation.notation[c1][0].insert(place, [c2, section])
-                self.notation.bonds[c1].append([c2, length, attr])
-                self.notation.bonds[c1].sort()
+        c2_b = self.notation.notation[c2][0]
+        if self.notation.bonds.get(c1) == None:
+            self.notation.bonds.update({c1: []})
+        place = self.place_and_check_to_insert_bond(c1_b, c2, section)
+        place2 = self.place_and_check_to_insert_bond(c2_b, c1, asection)
+        if place != -1:
+            self.notation.notation[c1][0].insert(place, [c2, section])
+            self.notation.bonds[c1].append([c2, length, attr])
+            self.notation.bonds[c1].sort()
+        if place2 != -1:
+            self.notation.notation[c2][0].insert(place2, [c1, asection])
 
     def check_c1_section_is_free(self, c1_bonds, section):
         for el in c1_bonds:
