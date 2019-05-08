@@ -33,7 +33,6 @@ class Notation:
         for key in self.bonds.keys():
             self.bonds[key] = sorted(self.bonds[key])
 
-
     def difference_of_bonds(self, to_the_notation):
         bonds_diffs = 0
         for k_1, i_1 in self.notation.items():
@@ -155,9 +154,9 @@ class Notation:
             f.write(str(n) + '\n\n')
             for ix in range(n):
                 f.write('{}\t{}\t{}\t{}\n'.format(names[ix], *list(map(str, ds[ix]))))
+        heat = get_heat_of_xyz(file, tmpdir=tmp)
         if del_flag: rmtree(tmp)
-        return get_heat_of_xyz(file, tmpdir=tmp)
-
+        return heat
 
     def s_change(self, to_the_notation, follow_energy=False, sh=False, keep_change=False):
         if follow_energy:
@@ -175,14 +174,14 @@ class Notation:
 
     def s_change_step(self, to_the_notation):
         s_d = self.s_diff(to_the_notation)
-        inx = np.random.random(len(s_d))
-        k_1, inx, j = s_d[inx]
+        indx = np.random.randint(len(s_d))
+        k_1, inx, j = s_d[indx]
         self.notation[k_1][0][inx][1] = j
 
     def l_change_step(self, to_the_notation):
         l_d = self.l_diff(to_the_notation)
-        inx = np.random.random(len(l_d))
-        k_1, inx, j = l_d[inx]
+        indx = np.random.randint(len(l_d))
+        k_1, inx, j = l_d[indx]
         self.bonds[k_1][inx][1] = j[1]
 
     def l_change(self, to_the_notation, follow_energy=False, sh=False, keep_change=False):
@@ -229,6 +228,43 @@ class Molecule:
     def set_n(self, n):
         self.n = n
         self.notation = Notation(n=n, info_from_file=xyz_names_bonds(self.mol2file))
+
+    def add_bond(self, c1, c2, length, section, attr='1'):
+        '''
+        :param c1, c2: c1 < c2
+        :param attr: string_describe
+        '''
+        c1_b = self.notation.notation[c1][0]
+        if c1_b:
+            place = self.place_and_check_to_insert_bond(c1_b, c2, section)
+            if place != -1:
+                self.notation.notation[c1][0].insert(place, [c2, section])
+                self.notation.bonds[c1].append([c2, length, attr])
+                self.notation.bonds[c1].sort()
+
+    def check_c1_section_is_free(self, c1_bonds, section):
+        for el in c1_bonds:
+            if el[1] == section:
+                return False
+        return True
+
+    def place_and_check_to_insert_bond(self, c1_bonds, c2, section):
+        '''
+        :param c1:
+        :param c2:
+        :param section:
+        :return: -1 if c1-section exists for another bond otherwise index to insert
+        '''
+        if self.check_c1_section_is_free(c1_bonds, section):
+            for inx, el in enumerate(c1_bonds):
+                if el[0] == c2:
+                    # if bond exists let's change section
+                    el[1] = section
+                elif el[0] > c2:
+                    return inx
+        else: return -1
+
+
 
     def get_dimensional(self, relax=True):
         return dimensional_structure(self.notation, relax=relax)
@@ -289,7 +325,7 @@ class Molecule:
         for inx, nbond in enumerate(self.notation.notation[atom_with_bond][0]):
             if nbond[0] == atom_to_bond:
                 return inx
-        return None
+        return -1 # warning: probably go to last element
 
     def atom_and_bonded_with_it(self):
         '''
@@ -321,17 +357,21 @@ class Molecule:
             else:
                 r1, r2 = self.atom_and_bonded_with_it()
                 child.notation.bonds[r1][r2][1] += -0.1 if np.random.randint(2) else 0.1
-        return child # change both length but how????
+                print(child.notation.bonds[r1]) #TODO fix here
+        return child # change both length but how???? does it need?
 
-    def mutation(self, bond_exist=True, length_change=0.5):
+    def mutation(self, bond_exist=True, length_change=0.5): #TODO bond add mutation
         mutant = copy.deepcopy(self)
         a1, a2 = self.atom_and_bonded_with_it()
         if np.random.random() < 0.5:
             n_section = np.random.randint(0, len(self.notation.divider.scube))
+            while not self.check_c1_section_is_free(self.notation.notation[a1][0], n_section):
+                n_section = np.random.randint(0, len(self.notation.divider.scube))
             mutant.notation.notation[a1][0][a2][1] = n_section
         else:
             dl = np.random.normal(0, 0.5, 1)[0]
             mutant.notation.bonds[a1][a2][1] = mutant.notation.bonds[a1][a2][1] + round(dl, 1)
+            #TODO fix here symmetric
         return mutant
 
 
@@ -393,13 +433,25 @@ def real_random_path(reactant, product):
     plt.show()
 
 
-
-
 def random_to_the_aim_search(reactant, product):
     '''
     :return: energies_path and length of sections changes
     '''
-
+    d = reactant.notation.diff(product.notation)
+    path = [reactant.notation.get_heat()]
+    msds = [compare_structers(reactant.to_positions_array(), product.to_positions_array())]
+    while d[2] > 0.1 and d[1] != 0:
+        if np.random.random() < 0.5:
+            if d[1] != 0:
+                reactant.notation.s_change_step(product.notation)
+        else:
+            if d[2] > 0.1:
+                reactant.notation.l_change_step(product.notation)
+        d = reactant.notation.diff(product.notation)
+        reactant.refresh_dimensional()
+        msds.append(compare_structers(reactant.to_positions_array(), product.to_positions_array()))
+        # path.append(reactant.notation.get_heat())
+    return path, msds
     #########two halves of random path#########
     # s = reactant.notation.s_change(product.notation, follow_energy=True, sh=True)
     # l = reactant.notation.l_change(product.notation, follow_energy=True, sh=True)
@@ -418,24 +470,20 @@ if __name__ == '__main__':
     if reaction == '3a->4':
         ln = Molecule('./ordered_mol2/3a.mol2', n=n)
         pr = Molecule('./ordered_mol2/4_opted.mol2', n=n)
+        pr.refresh_dimensional()
     else:
         ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
         pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
-
-    print(ln.notation.diff(pr.notation))
+        pr.refresh_dimensional()
+    # p, ms = random_to_the_aim_search(ln, pr)
+    ln.add_bond(3, 4, 1.1, 255)
+    # print(max(p))
+    # print(p)
+    #
+    # print(max(ms))
+    # print(ms)
 
     # real_random_path(ln, pr)
-    # print(ln.mutation(pr))
-    # print(ln.notation.diff(pr.notation))
-    # print('reactant with orignal reactant')
-    # print(ln.compare_with(np.array([i for _, i in dimensional_structure(ln.notation).items()])))
-    # print('before original pr with orignal reactant')
-    # print(compare_structers(ln.to_positions_array(), pr.to_positions_array()))
-    # print('before original pr with dim_struct of reactant')
-    # print(pr.compare_with(np.array([i for _, i in dimensional_structure(ln.notation).items()])))
-    # print('before dim_structure of pr with dim_struct of reactant')
-    # print(compare_structers(np.array([i for _, i in dimensional_structure(ln.notation).items()]), np.array([i for _, i in dimensional_structure(pr.notation).items()])))
-    # print('product with product')
     # print(pr.compare_with(np.array([i for _, i in dimensional_structure(pr.notation).items()])))
     # name_heat = reaction + 'start.xyz'
     # pr.to_xyz(name_heat)
@@ -446,40 +494,5 @@ if __name__ == '__main__':
     # print(ln.notation.l_change(pr.notation, follow_energy=True))
     # print(ln.notation.s_change(pr.notation, follow_energy=True))
 
-    # n = 10
-    # reaction = 'mopac_example'  # '3a->4' #
-    # # reaction = '3a->4' #
-    # if reaction == '3a->4':
-    #     ln = Molecule('./ordered_mol2/3a.mol2', n=n)
-    #     pr = Molecule('./ordered_mol2/4_opted.mol2', n=n)
-    # else:
-    #     ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
-    #     pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
-    # print('sections+length')
-    # print(ln.notation.s_change(pr.notation, follow_energy=True))
-    # print(ln.notation.l_change(pr.notation, follow_energy=True))
 
-    # print(ln.notation.s_diff(pr.notation))
-    # print(ln.notation.l_diff(pr.notation))
-
-    # for k, i in pr.notation.bonds.items():
-    #     print('atom ', k)
-    #     print('product', i)
-    #     print('reactant', ln.notation.bonds[k])
-    # print(pr.notation.bonds)
-    # print(ln.notation.l_diff(pr.notation))
-    # print(dimensional_structure(ln.notation))
-
-    # print(compare_structers(np.array([i for _, i in dimensional_structure(ln.notation).items()]), np.array([i for _, i in dimensional_structure(pr.notation).items()])))
-    # print(pr.compare_with(np.array([i for _, i in dimensional_structure(ln.notation).items()])))
-    # print(pr.compare_with(np.array([i for _, i in dimensional_structure(ln.notation).items()])))
-    # print(ln.compare_with(pr.to_positions_array()))
-
-
-    # print(ln.compare_with(pr.to_positions_array()))
-    # print(pr.compare_with(np.array([i for _, i in dimensional_structure(ln.notation).items()])))
-
-    # plt.plot(list(range(len(paths))), paths)
-    # plt.title('reaction {},n={}, all changes'.format(reaction, str(n)))
-    # plt.show()
     # write_mol2_file('My_' + name + '_' + 'q0.mol2', atoms_info, dim_structure, bonds=paired)
