@@ -37,11 +37,11 @@ def write_mol2_file(file_name, atoms, positions, bonds):
             f1.write("\t{0}\t{1}\t{2}\t{3}\n".format(str(k+1), str(num[0]), str(num[1]), str(i[1])))
 
 
-def check(notation, dim_structure_reduced, eps=0.01): #TODO fix here
+def check(notation, dim_structure_reduced, eps=0.01):
     forces = 1
     forces_next = 0
 
-    while abs(forces_next - forces) > eps**3:
+    while abs(forces_next - forces) > eps: #**3
         forces_next, forces = 0, forces_next
         lengths = bonds_of_paired(notation.bonds)
         for atom in dim_structure_reduced:
@@ -50,7 +50,7 @@ def check(notation, dim_structure_reduced, eps=0.01): #TODO fix here
                 if bond in dim_structure_reduced:
                     length = lengths.get(tuple(sorted([atom, bond])))[0]
                     s = notation.notation[bond][atom]
-                    force = force + dim_structure_reduced[bond]-notation.divider.scube[s]*length-dim_structure_reduced[atom]
+                    force = force + dim_structure_reduced[bond]+notation.divider.scube[s]*length-dim_structure_reduced[atom]
             n_f = np.linalg.norm(force)
             forces_next += n_f
             dim_structure_reduced[atom] = dim_structure_reduced[atom] + eps*force
@@ -80,16 +80,6 @@ def dimensional_structure(notation, relax=True):
             else:
                 if relax: dim_structure = check(notation, dim_structure)
     return dim_structure
-
-def relaxing(notation, lengths, dim_structure):
-    scube = notation.divider.scube
-    for i, j in notation.items():
-        for k in j[0]:#i, k[0] elements considered
-            delta_length = np.linalg.norm(dim_structure[k[0]]-(dim_structure[i]+scube[k[1]]*(lengths.get((i, k[0]), lengths.get(k[0], i))[0])))
-            if i > k[0] and (delta_length) > 0.09:# and i < k[0]:
-                print(i, k[0], round(delta_length, 3), lengths.get((i, k[0]), lengths.get(k[0], i))[1])
-    return 0
-
 
 
 if __name__ == '__main__':
