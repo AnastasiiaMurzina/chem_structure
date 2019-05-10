@@ -37,25 +37,23 @@ def write_mol2_file(file_name, atoms, positions, bonds):
             f1.write("\t{0}\t{1}\t{2}\t{3}\n".format(str(k+1), str(num[0]), str(num[1]), str(i[1])))
 
 
-def check(notation, dim_structure_reduced, eps=0.01):
+def check(notation, dim_structure_reduced, eps=0.01): #TODO fix here
     forces = 1
     forces_next = 0
-    notation_l = notation.notation
 
     while abs(forces_next - forces) > eps**3:
         forces_next, forces = 0, forces_next
         lengths = bonds_of_paired(notation.bonds)
         for atom in dim_structure_reduced:
             force = np.array([0, 0, 0])
-            for bond in notation_l[atom][0]:
-                if bond[0] in dim_structure_reduced:
-                    length = lengths.get(tuple(sorted([atom, bond[0]])))[0]
-                    force = force + dim_structure_reduced[bond[0]]-notation.divider.scube[bond[1]]*length-dim_structure_reduced[atom]
+            for bond in notation.notation[atom].keys():
+                if bond in dim_structure_reduced:
+                    length = lengths.get(tuple(sorted([atom, bond])))[0]
+                    s = notation.notation[bond][atom]
+                    force = force + dim_structure_reduced[bond]-notation.divider.scube[s]*length-dim_structure_reduced[atom]
             n_f = np.linalg.norm(force)
-            # if n_f>0.05: print('n_f', n_f)
             forces_next += n_f
             dim_structure_reduced[atom] = dim_structure_reduced[atom] + eps*force
-        # print(atom, forces_next)
     return dim_structure_reduced
 
 def dimensional_structure(notation, relax=True):
@@ -67,32 +65,18 @@ def dimensional_structure(notation, relax=True):
     div = notation.divider.scube
     lengths = bonds_of_paired(notation.bonds)
     bonds_l = copy.deepcopy(notation.notation) # warning - it was error in other dim_structure builders
-    print(bonds_l)
     first_atom = min(bonds_l.keys())
     dim_structure = {first_atom: np.array([0, 0, 0])}
-    p = [list(bonds_l[first_atom].keys())]
+    p = [[first_atom, list(bonds_l[first_atom].keys())]] # p[0] - current atom, p[1] - bonds
     bonds_copy = copy.deepcopy(bonds_l)
-    p.insert(0, first_atom)  # p[0] - current atom, p[1] - bonds
-    p = [p]
-    print(p[0])
     while len(p) != 0:
         cur_key, bonds = p.pop(0)
-        print(cur_key)
-        print(bonds)
         for i in bonds:  # build bonds for cur_key atom
-            print(i)
-            if not (i[0] in dim_structure):  # if we don't have position:
-                coord = div[i[1]]*(lengths.get(tuple(sorted([cur_key, i[0]])))[0]) + dim_structure[cur_key]
-                dim_structure.update({i[0]: coord})
-                poper = bonds_copy.pop(i[0])
-                poper.insert(0, i[0])
-                ix = -1
-                while ix < len(poper[1])-1:
-                    ix += 1
-                    if poper[1][ix][0] == cur_key:
-                        poper[1].pop(ix)
-                        break
-                p.append(poper)
+            if not (i in dim_structure):  # if we don't have position:
+                s = notation.notation[cur_key][i]
+                coord = div[s]*(lengths.get(tuple(sorted([cur_key, i])))[0]) + dim_structure[cur_key]
+                dim_structure.update({i: coord})
+                p.append([i, list(bonds_copy.pop(i).keys())])
             else:
                 if relax: dim_structure = check(notation, dim_structure)
     return dim_structure

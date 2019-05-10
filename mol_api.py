@@ -493,8 +493,11 @@ if __name__ == '__main__':
         pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
         pr.refresh_dimensional()
     # p, ms = random_to_the_aim_search(ln, pr)
-    here = real_random_path(ln, pr)
-    print(here)
+    b = ln.to_positions_array()
+    ln.refresh_dimensional()
+    print(compare_structers(b, ln.to_positions_array())) #, pr.to_positions_array()))
+    # here = real_random_path(ln, pr)
+    # print(here)
     # print(max(p))
     # print(p)
     #
