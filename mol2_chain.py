@@ -12,18 +12,6 @@ def prepare_bonds(bonds):
     return bonds
 
 
-def bonds_of_paired(bonds):
-    '''
-    :param bonds: in format {1: [[[2,1]], (2,1)], ...}
-    :return: bonds in format {(c_1, c_2): [attr, length], ...}
-    '''
-    paired_bonds = {}
-    for key, item in bonds.items():
-        for i in item:
-            paired_bonds.update({(key, i[0]): i[1::]})
-    return paired_bonds
-
-
 def bonds_to_one_way_dict(bonds):
     d = {}
     for i in bonds:
@@ -133,8 +121,6 @@ if __name__ == '__main__':
     # bs, ass = xyz_names_bonds(name + '.mol2')
     atoms_info = atoms_and_bonds(name + '.mol2')
     ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'))
-    print(ln)
-    paired = bonds_of_paired(ln[1])
     dim_structure = dimensional_structure([ln[0], paired])
     # print(dim_structure)
     write_mol2_file('My_'+name+'_'+'q.mol2', atoms_info, dim_structure, bonds=paired)
@@ -168,8 +154,7 @@ if __name__ == '__main__':
 
             ln = mol2_to_notation(xyz_names_bonds(name), method=mth, n_y=n_y, n_z=n_z, fr=9, sr=13,
                                   r=0.6)  # , kwargs={'n_y': 5, 'n_z': 7})
-            # print(ln)
-            paired = bonds_of_paired(ln[1])
+
             dim_structure = dimensional_structure([ln[0], paired], method=mth, n_y=n_y, n_z=n_z, fr=9, sr=13,
                                                   r=0.6)  # ,kwargs={'n_y': 5, 'n_z': 7})
             dec_file = os.path.join(r_dir, 'My_' + exactly_name[:-5:] + '_' + mth + '.mol2')
@@ -193,13 +178,10 @@ if __name__ == '__main__':
     # atoms_info = atoms_and_bonds(name + '.mol2')
     # print(atoms_info)
 
-
-    # write_mol2_file("My_one_atom.mol2", lig_as, dd, bonds=bonds_of_paired(ln[1]))
     # (xyz_names_bonds(name + '.mol2'))
     # ln = mol2_to_notation(xyz_names_bonds(name + '.mol2'), method=mth, n_y=n_y, n_z=n_z, fr=9, sr=13,
     #                       r=0.6)  # , kwargs={'n_y': 5, 'n_z': 7})
-    # print(ln)
-    # paired = bonds_of_paired(ln[1])
+
     # dim_structure = dimensional_structure([ln[0], paired], method=mth, n_y=n_y, n_z=n_z, fr=9, sr=13,
     #                                       r=0.6)  # ,kwargs={'n_y': 5, 'n_z': 7})
     # write_mol2_file('My_' + name + '_' + mth + '.mol2', atoms_info, dim_structure, bonds=paired)
