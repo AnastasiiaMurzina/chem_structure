@@ -42,11 +42,12 @@ def check(notation, dim_structure_reduced, eps=0.01): #TODO fix relaxation
         forces_next, forces = 0, forces_next
         for atom in dim_structure_reduced:
             force = np.array([0, 0, 0])
-            for bond in notation.notation[atom].keys():
+            for bond in notation.bonds[atom].keys():
                 if bond in dim_structure_reduced:
-                    length = notation.bonds[atom][bond].length
+                    l = notation.bonds[atom][bond].length
                     s = notation.bonds[atom][bond].section
-                    force = force + dim_structure_reduced[atom]+notation.divider.scube[s]*length-dim_structure_reduced[bond]
+                    d = dim_structure_reduced[atom]+notation.divider.scube[s]*l-dim_structure_reduced[bond]
+                    force = force + d
             n_f = np.linalg.norm(force)
             forces_next += n_f
             dim_structure_reduced[atom] = dim_structure_reduced[atom] + eps*force
@@ -63,7 +64,6 @@ def dimensional_structure(notation, relax=True):
     first_atom = min(bonds_l.keys())
     dim_structure = {first_atom: np.array([0, 0, 0])}
     p = [[first_atom, list(bonds_l[first_atom].keys())]] # p[0] - current atom, p[1] - bonds
-    bonds_copy = copy.deepcopy(bonds_l)
     while len(p) != 0:
         cur_key, bonds = p.pop(0)
         for i in bonds:  # build bonds for cur_key atom
@@ -71,9 +71,8 @@ def dimensional_structure(notation, relax=True):
                 s = notation.notation[cur_key][i]
                 coord = div[s]*notation.bonds[cur_key][i].length + dim_structure[cur_key]
                 dim_structure.update({i: coord})
-                p.append([i, list(bonds_copy.pop(i).keys())])
-            else:
-                if relax: dim_structure = check(notation, dim_structure)
+                p.append([i, list(bonds_l.pop(i).keys())])
+                # if relax: dim_structure = check(notation, dim_structure)
     return dim_structure
 
 
@@ -118,7 +117,6 @@ if __name__ == '__main__':
         #             print(b1[j][1], b2[j][1])
         # print(name_sh, len(flags) - sum(flags), 'length errors')
 
-        # print(ln.notation == ln2.notation)
 
         # dim_structure = dimensional_structure(ln2, relax=True)
         # write_mol2_file('My_' + name + '_' + 'q1.mol2', atoms_info, dim_structure, bonds=paired)
