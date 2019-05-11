@@ -67,17 +67,21 @@ class Atom():
 
 
 class Bond():
-    def __init__(self, c1, c2, attr, length=1., sections=[]):
-        self.connected = {c1, c2} # c1<c2
+    def __init__(self, c1, c2, attr='1', length=1., section=0):
+        self.c1 = c1
+        self.c2 = c2
         self.attr = attr
         self.length = length
-        self.sections = sections # [section_c1, section_c2]
+        self.section = section # relatively c1
 
     def set_length(self, length):
         self.length = length
 
-    def set_section(self, sections):
-        self.sections = sections
+    def set_section(self, section):
+        self.section = section
+
+    def set_attr(self, attr):
+        self.attr = attr
 
 def xyz_names_bonds(file_name):
     _, positions, bondsf = read_mol2(file_name)
@@ -137,14 +141,18 @@ def xyz_to_array(file_name):
 def bonds_to_dict(bonds):
     '''
     :param bonds:
-    :return: {min_atom_num: [[big_atom_num, length, attr], [bigger_atom_num, length, attr],...]. }
+    :return: {atom1: {atom2: Bond(atom1, atom2, attr) } }
     '''
     d = {}
     for i in bonds:
         if d.get(i[0]):
-            d[i[0]].update({i[1]: Bond(i[0], i[1])})
+            d[i[0]].update({i[1]: Bond(i[0], i[1], i[2])})
         else:
-            d.update({i[0]: {i[1]: Bond(i[0], i[1])}})
+            d.update({i[0]: {i[1]: Bond(i[0], i[1], i[2])}})
+        if d.get(i[1]):
+            d[i[1]].update({i[0]: Bond(i[1], i[0], i[2])})
+        else:
+            d.update({i[1]: {i[0]: Bond(i[1], i[0], i[2])}})
     return d
 
 if __name__ == "__main__":

@@ -35,21 +35,18 @@ def write_mol2_file(file_name, atoms, positions, bonds):
             f1.write("\t{0}\t{1}\t{2}\t{3}\n".format(str(k+1), str(num[0]), str(num[1]), str(i[1])))
 
 
-def check(notation, dim_structure_reduced, eps=0.01):
+def check(notation, dim_structure_reduced, eps=0.01): #TODO fix relaxation
     forces = 1
     forces_next = 0
-
     while abs(forces_next - forces) > eps: #**3
         forces_next, forces = 0, forces_next
-        lengths = notation.bonds
         for atom in dim_structure_reduced:
             force = np.array([0, 0, 0])
             for bond in notation.notation[atom].keys():
                 if bond in dim_structure_reduced:
-                    k1, k2 = sorted([atom, bond])
-                    length = lengths[atom][bond][0]
-                    s = notation.notation[bond][atom]
-                    force = force + dim_structure_reduced[bond]+notation.divider.scube[s]*length-dim_structure_reduced[atom]
+                    length = notation.bonds[atom][bond].length
+                    s = notation.bonds[atom][bond].section
+                    force = force + dim_structure_reduced[atom]+notation.divider.scube[s]*length-dim_structure_reduced[bond]
             n_f = np.linalg.norm(force)
             forces_next += n_f
             dim_structure_reduced[atom] = dim_structure_reduced[atom] + eps*force
@@ -62,7 +59,6 @@ def dimensional_structure(notation, relax=True):
     :return: xyz-info
     '''
     div = notation.divider.scube
-    lengths = notation.bonds
     bonds_l = copy.deepcopy(notation.notation) # warning - it was error in other dim_structure builders
     first_atom = min(bonds_l.keys())
     dim_structure = {first_atom: np.array([0, 0, 0])}
@@ -73,9 +69,7 @@ def dimensional_structure(notation, relax=True):
         for i in bonds:  # build bonds for cur_key atom
             if not (i in dim_structure):  # if we don't have position:
                 s = notation.notation[cur_key][i]
-                k1, k2 = sorted([cur_key, i])
-                print(lengths[k1][k2])
-                coord = div[s]*lengths[k1][k2][0] + dim_structure[cur_key]
+                coord = div[s]*notation.bonds[cur_key][i].length + dim_structure[cur_key]
                 dim_structure.update({i: coord})
                 p.append([i, list(bonds_copy.pop(i).keys())])
             else:
