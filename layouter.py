@@ -1,8 +1,6 @@
 import copy
 import numpy as np
 from numpy import arctan2
-from mol2_chain_q import bonds_of_paired
-
 
 
 def cartesian_to_spherical(vector):
@@ -43,12 +41,13 @@ def check(notation, dim_structure_reduced, eps=0.01):
 
     while abs(forces_next - forces) > eps: #**3
         forces_next, forces = 0, forces_next
-        lengths = bonds_of_paired(notation.bonds)
+        lengths = notation.bonds
         for atom in dim_structure_reduced:
             force = np.array([0, 0, 0])
             for bond in notation.notation[atom].keys():
                 if bond in dim_structure_reduced:
-                    length = lengths.get(tuple(sorted([atom, bond])))[0]
+                    k1, k2 = sorted([atom, bond])
+                    length = lengths[atom][bond][0]
                     s = notation.notation[bond][atom]
                     force = force + dim_structure_reduced[bond]+notation.divider.scube[s]*length-dim_structure_reduced[atom]
             n_f = np.linalg.norm(force)
@@ -63,7 +62,7 @@ def dimensional_structure(notation, relax=True):
     :return: xyz-info
     '''
     div = notation.divider.scube
-    lengths = bonds_of_paired(notation.bonds)
+    lengths = notation.bonds
     bonds_l = copy.deepcopy(notation.notation) # warning - it was error in other dim_structure builders
     first_atom = min(bonds_l.keys())
     dim_structure = {first_atom: np.array([0, 0, 0])}
@@ -74,7 +73,9 @@ def dimensional_structure(notation, relax=True):
         for i in bonds:  # build bonds for cur_key atom
             if not (i in dim_structure):  # if we don't have position:
                 s = notation.notation[cur_key][i]
-                coord = div[s]*(lengths.get(tuple(sorted([cur_key, i])))[0]) + dim_structure[cur_key]
+                k1, k2 = sorted([cur_key, i])
+                print(lengths[k1][k2])
+                coord = div[s]*lengths[k1][k2][0] + dim_structure[cur_key]
                 dim_structure.update({i: coord})
                 p.append([i, list(bonds_copy.pop(i).keys())])
             else:
@@ -99,7 +100,7 @@ if __name__ == '__main__':
 
         # atoms_info = atoms_and_bonds(file_name + '.mol2')
         # ln = Notation(n=n_param, info_from_file=xyz_names_bonds(file_name + '.mol2'))
-        # paired = bonds_of_paired(ln.bonds)
+
         # dim_structure = dimensional_structure(ln, relax=True)
         # write_mol2_file('My_' + name + '_' + 'q0.mol2', atoms_info, dim_structure, bonds=paired)
         #

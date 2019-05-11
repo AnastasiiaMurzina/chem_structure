@@ -76,7 +76,6 @@ class Bond():
     def set_length(self, length):
         self.length = length
 
-
     def set_section(self, sections):
         self.sections = sections
 
@@ -123,7 +122,6 @@ def compare_structers(mol1, mol2):
     mol1 -= rmsd.centroid(mol1)
     mol2 -= rmsd.centroid(mol2)
     rotate = rmsd.kabsch(mol2, mol1)
-
     mol2 = np.dot(mol2, rotate)
     return rmsd.rmsd(mol1, mol2)
 
@@ -135,6 +133,19 @@ def xyz_to_array(file_name):
         for _ in range(n):
             lines.append([float(i) if len(i) > 3 and i[3:].isdigit() else i for i in f.readline().split()])
     return lines
+
+def bonds_to_dict(bonds):
+    '''
+    :param bonds:
+    :return: {min_atom_num: [[big_atom_num, length, attr], [bigger_atom_num, length, attr],...]. }
+    '''
+    d = {}
+    for i in bonds:
+        if d.get(i[0]):
+            d[i[0]].update({i[1]: Bond(i[0], i[1])})
+        else:
+            d.update({i[0]: {i[1]: Bond(i[0], i[1])}})
+    return d
 
 if __name__ == "__main__":
     pass

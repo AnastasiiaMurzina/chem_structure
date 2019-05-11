@@ -5,7 +5,7 @@ from shutil import rmtree
 import matplotlib.pyplot as plt
 
 from layouter import *
-from mol2_chain_q import bonds_to_one_way_dict, to_two_ways_bond2, prepare_bonds
+from mol2_chain_q import bonds_to_one_way_dict, to_two_ways_bond2
 from mol2_worker import read_mol2, Atom, xyz_names_bonds, compare_structers, Bond
 from mopac_worker import get_heat_of_xyz
 from quadro_with_rotate_class import Spherical_divider
@@ -16,61 +16,45 @@ class Notation:
         self.divider = Spherical_divider(n=n)
         bonds, self.atoms = info_from_file
         self.notation = {}
-        self.bonds = bonds_to_one_way_dict(prepare_bonds(bonds))
+        self.bonds = bonds_to_one_way_dict(bonds)
         self.set_notation(copy.deepcopy(self.atoms))
 
     def set_notation(self, positions_copy):
-        bonds2 = to_two_ways_bond2(self.bonds, with_attr=True)
+        bonds2 = to_two_ways_bond2(self.bonds)
         for key, item in self.atoms.items():
             cur_p = positions_copy.pop(key).position()
-            connected = [i[0] for i in bonds2[key]]
-            self.notation.update({key: {i: self.divider.find_section(cur_p, self.atoms[i].position())
-                                             for i in connected}})
+            connected = list(bonds2[key].keys())
+            self.notation.update({key: {i: [self.divider.find_section(cur_p, self.atoms[i].position())]} for i in connected})
         for key, item in self.bonds.items():
-            for i in range(len(item)):
-                self.bonds[key][i].insert(1, round(
-                    np.linalg.norm(self.atoms[key].position() - self.atoms[item[i][0]].position()), 1))
-        for key in self.bonds.keys():
-            self.bonds[key] = sorted(self.bonds[key])
+            for k, i in item.items():
+                k1, k2 = sorted([key, k])
+                l = round(np.linalg.norm(self.atoms[k1].position() - self.atoms[k2].position()), 1)
+                self.bonds[k1].update({k2: [l, i]})
+
 
     def difference_of_bonds(self, to_the_notation):
         bonds_diffs = 0
         for k_1, i_1 in self.notation.items():
-            k_2 = k_1
-            i_2 = to_the_notation.notation.get(k_2) # also it may be bond only in product...
-            if i_2 is None:
-                bonds_diffs += len(i_1[0])
-                continue
-            inx1, inx2 = 0, 0
-            while inx1 < len(i_1[0]) and inx2 < len(i_2[0]):
-                f, s = i_1[0][inx1], i_2[0][inx2]
-                if f[0] == s[0]:
-                    inx2 += 1
-                    inx1 += 1
-                else:
-                    bonds_diffs += 1
-                    if f[0] > s[0]: inx2 += 1
-                    else: inx1 += 1
+            if to_the_notation.notation.get(k_1) is None:
+                bonds_diffs += len(i_1.keys())
+            else:
+                i_2 = set(to_the_notation.notation.get(k_1).keys())
+                bonds_diffs += len(set(i_1.keys()) ^ i_2)
+        d = set(to_the_notation.notation.keys()) - set(self.notation.keys())
+        bonds_diffs += sum([len(to_the_notation[dd]) for dd in d])
         return bonds_diffs
 
     def difference_of_sections(self, to_the_notation):
         sections_diffs = 0
         for k_1, i_1 in self.notation.items():
-            k_2 = k_1
-            i_2 = to_the_notation.notation.get(k_2)  # also it may be bond only in product...
-            if i_2 is None:
+            if to_the_notation.notation.get(k_1) is None:
                 continue
-            inx1, inx2 = 0, 0
-            while inx1 < len(i_1[0]) and inx2 < len(i_2[0]):
-                f, s = i_1[0][inx1], i_2[0][inx2]
-                if f[0] == s[0]:
-                    if f[1] != s[1]:
-                        sections_diffs += 1
-                    inx2 += 1
-                    inx1 += 1
-                else:
-                    if f[0] > s[0]: inx2 += 1
-                    else: inx1 += 1
+            k_2 = k_1
+            ki1 = list(i_1.keys())
+            i_2 = to_the_notation.notation.get(k_2)
+            s1 = np.array([i for _, i in i_1.items()])
+            s2 = np.array([i_2.get(inx) for inx in ki1])
+            sections_diffs += sum(np.where(s1 == s2, 0, 1))
         return sections_diffs
 
     def difference_of_lengths(self, to_the_notation):
@@ -110,12 +94,16 @@ class Notation:
         s_d = []
         for k_1, i_1 in self.notation.items():
             k_2 = k_1
-            i_2 = to_the_notation.notation[k_2]
-            if len(i_1[0]) == len(i_2[0]):
-                for inx, j in enumerate(zip(i_1[0], i_2[0])):
-                    i, j = j
-                    if i[0] == j[0] and i[1] != j[1]:
-                        s_d.append([k_1, inx, j[1]])
+            i_2 = to_the_notation.notation.get(k_2)
+            if i_2 is None:
+                return []
+            ki1 = list(i_1.keys())
+            i_2 = to_the_notation.notation.get(k_2)
+            s1 = np.array([i for _, i in i_1.items()])
+            s2 = np.array([i_2.get(inx) for inx in ki1])
+            for a, sec1, sec2 in zip(i_1.items(), s1, s2):
+                if sec1 != sec2:
+                    s_d.append([k_1, a[0], sec2])
         return s_d
 
     def l_diff(self, to_the_notation):
@@ -165,7 +153,7 @@ class Notation:
         s_d = self.s_diff(to_the_notation)
         if sh: np.random.shuffle(s_d)
         for k_1, inx, j in s_d:
-            self.notation[k_1][0][inx][1] = j
+            self.notation[k_1][inx] = j
             if follow_energy:
                 ens.append(self.get_heat(tmp=tmp))
         if follow_energy:
@@ -176,7 +164,7 @@ class Notation:
         s_d = self.s_diff(to_the_notation)
         indx = np.random.randint(len(s_d))
         k_1, inx, j = s_d[indx]
-        self.notation[k_1][0][inx][1] = j
+        self.notation[k_1][inx] = j
 
     def l_change_step(self, to_the_notation):
         l_d = self.l_diff(to_the_notation)
@@ -218,8 +206,8 @@ class Molecule:
                                           length=np.linalg.norm(self.atoms[l[1]].position()
                                                                 - self.atoms[l[2]].position()))})
 
-    def refresh_dimensional(self):
-        ds = self.get_dimensional()
+    def refresh_dimensional(self, relax=True):
+        ds = self.get_dimensional(relax=relax)
         for k, i in ds.items():
             self.atoms[k].x = i[0]
             self.atoms[k].y = i[1]
@@ -231,32 +219,25 @@ class Molecule:
 
     def add_bond(self, c1, c2, length, section, attr='1'):
         '''
+        Warning: use only if unatural add (otherwise calculate both sections)
         :param c1, c2: c1 < c2
         :param attr: string_describe
         '''
         asection = self.notation.divider.anti_scube[section]
         if self.notation.notation.get(c1) == None:
-            self.notation.notation.update({c1: [[]]})
+            self.notation.notation.update({c1: {c2: section}})
         if self.notation.notation.get(c2) == None:
-            self.notation.notation.update({c2: [[]]})
-        c1_b = self.notation.notation[c1][0]
-        c2_b = self.notation.notation[c2][0]
+            self.notation.notation.update({c2: {c1: asection}})
         if self.notation.bonds.get(c1) == None:
             self.notation.bonds.update({c1: []})
-        place = self.place_and_check_to_insert_bond(c1_b, c2, section)
-        place2 = self.place_and_check_to_insert_bond(c2_b, c1, asection)
-        if place != -1:
-            self.notation.notation[c1][0].insert(place, [c2, section])
-            self.notation.bonds[c1].append([c2, length, attr])
-            self.notation.bonds[c1].sort()
-        if place2 != -1:
-            self.notation.notation[c2][0].insert(place2, [c1, asection])
+        self.notation.bonds[c1].append([c2, length, attr])
+        self.notation.bonds[c1].sort()
+        self.notation.notation[c1].update({c2: section})
+        self.notation.notation[c2].update({c1: asection})
 
-    def check_c1_section_is_free(self, c1_bonds, section):
-        for el in c1_bonds:
-            if el[1] == section:
-                return False
-        return True
+    def check_c1_section_is_free(self, c1, section):
+        sections = [i for _, i in c1.items()]
+        return not (section in sections)
 
     def place_and_check_to_insert_bond(self, c1_bonds, c2, section):
         '''
@@ -321,8 +302,8 @@ class Molecule:
         '''
         bs = []
         for _ in range(n):
-            r1 = np.random.choice([i for i in self.notation.bonds.keys()])
-            r2 = np.random.choice([i[0] for i in self.notation.bonds[r1]])
+            r1 = np.random.choice(self.notation.notation.keys())
+            r2 = np.random.choice(self.notation.notation[r1].keys())
             bs.append({r1, r2})
         return bs
 
@@ -341,8 +322,8 @@ class Molecule:
         '''
         :return: random atom and random index of bonded with it atom
         '''
-        r1 = np.random.choice([i for i in self.notation.bonds.keys()])
-        r2 = np.random.randint(len(self.notation.bonds[r1]))
+        r1 = np.random.choice(list(self.notation.notation.keys()))
+        r2 = np.random.choice(list(self.notation.notation[r1].keys()))
         return r1, r2
 
     def get_child(self, zero=True, change_length=True,
@@ -379,12 +360,13 @@ class Molecule:
         choi = np.random.random()
         if choi < 0.33:
             n_section = np.random.randint(0, len(self.notation.divider.scube))
-            while not self.check_c1_section_is_free(self.notation.notation[a1][0], n_section):
+            while not self.check_c1_section_is_free(self.notation.notation[a1], n_section):
                 n_section = np.random.randint(0, len(self.notation.divider.scube))
-            mutant.notation.notation[a1][0][a2][1] = n_section
+            mutant.notation.notation[a1][a2] = n_section
+            mutant.notation.notation[a2][a1] = self.notation.divider.anti_scube[n_section]
         elif choi > 0.67:
             dl = np.random.normal(0, 0.5, 1)[0]
-            mutant.notation.bonds[a1][a2][1] = mutant.notation.bonds[a1][a2][1] + round(dl, 1)
+            mutant.notation.bonds[a1][b2][1] = mutant.notation.bonds[a1][b2][1] + round(dl, 1)
         else:
             b1, b2 = sorted(np.random.choice(range(len(self.atoms)), 2) + np.array([1, 1]))
             mutant.add_bond(b1, b2, round(np.random.normal(1.1, 0.3), 2),
@@ -493,11 +475,8 @@ if __name__ == '__main__':
         pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
         pr.refresh_dimensional()
     # p, ms = random_to_the_aim_search(ln, pr)
-    b = ln.to_positions_array()
-    ln.refresh_dimensional()
-    print(compare_structers(b, ln.to_positions_array())) #, pr.to_positions_array()))
-    # here = real_random_path(ln, pr)
-    # print(here)
+    here = real_random_path(ln, pr)
+    print(here)
     # print(max(p))
     # print(p)
     #
