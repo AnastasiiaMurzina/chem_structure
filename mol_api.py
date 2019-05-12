@@ -253,8 +253,8 @@ class Molecule:
             for k, bond in self.bonds.items():
                 f.write('\t{}\t{}\t{}\t{}\n'.format(k, *bond.connected, bond.attr))
 
-    def to_xyz(self, xyzfile):
-        with open(xyzfile, 'w') as f:
+    def to_xyz(self, xyzfile, mode='w'):
+        with open(xyzfile, mode) as f:
             f.write(str(len(self.atoms))+'\n\n')
             for k, atom in self.atoms.items():
                 f.write('{}\t{}\t{}\t{}\n'.format(atom.name, atom.x, atom.y, atom.z))
@@ -375,7 +375,12 @@ def searcher(substrat, product,zero_bonds_only=False,
             st = copy.deepcopy(ch)
     return paths
 
-def real_random_path(reactant, product):
+def real_random_path(reactant, product, n=10000, write=False):
+    '''
+    :param reactant, product: Molecule
+    :param n: number of loops
+    :return: show plot of rmsds
+    '''
     mut = copy.deepcopy(reactant)
     d = reactant.notation.diff(product.notation)
     msd = compare_structers(mut.to_positions_array(), product.to_positions_array())
@@ -386,8 +391,7 @@ def real_random_path(reactant, product):
     msds = [msd]
     print('initial msd', msd, 'd', d)
     print('rmsd accept probability')
-    # print('length accept probability')
-    for _ in range(10000000):
+    for _ in range(n):
         # if d_pr[1] < d[1] or d_pr[2] < d[2] or np.random.random() < np.exp(-(d_pr[2]/d[2])):
         if d_pr[1] < d[1] or d_pr[2] < d[2] or np.random.random() < np.exp(-np.exp((msd_pr/msd)**2)):
             mut = mut_pr
@@ -403,16 +407,22 @@ def real_random_path(reactant, product):
     plt.show()
 
 
-def random_to_the_aim_search(reactant, product): #TODO implement here add of bonds
+def random_to_the_aim_search(reactant, product, write=False, file_log='reaction_report'): #TODO implement here add of bonds
     """
     :return: energies_path and length of sections changes
     """
     def apply_change():
         reactant.refresh_dimensional()
+        # path.append(reactant.notation.get_heat())
         msds.append(compare_structers(reactant.to_positions_array(), product.to_positions_array()))
-
+        if write:
+            reactant.to_xyz(file_log, mode='a')
+            with open(file_log, 'a') as f_w:
+                f_w.write('################\n')
+    with open(file_log, 'w') as f_w:
+        f_w.write('\n\n\n')
     d = reactant.notation.diff(product.notation)
-    path = [reactant.notation.get_heat()]
+    # path = [reactant.notation.get_heat()]
     msds = [compare_structers(reactant.to_positions_array(), product.to_positions_array())]
     while d[2] > 0.1 and d[1] != 0:
         if np.random.random() < 0.5:
@@ -425,8 +435,14 @@ def random_to_the_aim_search(reactant, product): #TODO implement here add of bon
         apply_change()
     while reactant.notation.s_change_step(product.notation) != -1:
         apply_change()
-        # path.append(reactant.notation.get_heat())
-    return path, msds
+    if write:
+        f = open(file_log, 'r+')
+        f.seek(0, 0)
+        f.write(str(len(msds))+'\n')
+        f.close()
+    # return path, msds
+    return msds
+
     #########two halves of random path#########
     # s = reactant.notation.s_change(product.notation, follow_energy=True, sh=True)
     # l = reactant.notation.l_change(product.notation, follow_energy=True, sh=True)
@@ -451,7 +467,7 @@ if __name__ == '__main__':
         pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
         pr.refresh_dimensional()
     ln.refresh_dimensional()
-    # p, ms = random_to_the_aim_search(ln, pr)
+    # ms = random_to_the_aim_search(ln, pr, write=True)
     real_random_path(ln, pr)
     # print(max(p))
     # print(p)
