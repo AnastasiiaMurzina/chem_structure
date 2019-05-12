@@ -5,11 +5,13 @@ import os, glob, tempfile, shutil
 
 FNULL = open(os.devnull, 'w')
 greece_numericals = {1: 'SINGLET', 2: 'DOUBLET',
-                    3: 'TRIPLET', 4: 'QUARTET', 5: 'QUINTET',
+                     3: 'TRIPLET', 4: 'QUARTET', 5: 'QUINTET',
                      6: 'SEXTET'}
+
 calculations = {'Single Point': 'NOOPT',
                 'Equilibrium Geometry': '',
                 'Frequencies': 'FORCE'}
+
 
 def generateInputFile(opts, mol_file_positions, mol_file_names):
     title = opts['Title']
@@ -17,18 +19,13 @@ def generateInputFile(opts, mol_file_positions, mol_file_names):
     theory = opts['Theory']
     multiplicity = opts['Multiplicity']
     charge = opts['Charge']
-
     output = ''
-
     multStr = greece_numericals.get(multiplicity, 'SINGLET')
 
     # Calculation type:
     calcStr = calculations[calculate]
-
-    # Charge, mult, calc type, theory:
-    if opts.get('TS'):
-        output += ' AUX LARGE CHARGE=%d %s %s %s %s\n' %\
-        (charge, multStr, calcStr, theory, opts['TS'])
+    if opts.get('TS'): # Locate-ts, saddle???
+        output += ' TS\n'
     else:
         output += ' AUX LARGE CHARGE=%d %s %s %s\n' %\
         (charge, multStr, calcStr, theory)
@@ -36,12 +33,13 @@ def generateInputFile(opts, mol_file_positions, mol_file_names):
 
     if calculate == 'Single Point':
         for num, pos in mol_file_positions.items():
-            output += '  {0}\t{1}\t0\t{2}\t0\t{3}\t0\n'.format(mol_file_names[num].name, pos[0], pos[1], pos[2])
+            output += '  {0}\t{1}\t0\t{2}\t0\t{3}\t0\n'.format(mol_file_names[num].name, *pos[0:3:])
     else:
         for num, pos in mol_file_positions.items():
-            output += ' {0}\t{1}\t1\t{2}\t1\t{3}\t1\n'.format(mol_file_names[num].name, pos[0], pos[1], pos[2])
+            output += ' {0}\t{1}\t1\t{2}\t1\t{3}\t1\n'.format(mol_file_names[num].name, *pos[0:3:])
 
     return output
+
 
 def writeInputFileFromXYZ(opts, xyz_file, mop_file):
     title = opts['Title']
@@ -59,8 +57,7 @@ def writeInputFileFromXYZ(opts, xyz_file, mop_file):
 
     # Charge, mult, calc type, theory:
     if opts.get('TS'):
-        output += ' AUX LARGE CHARGE=%d %s %s %s %s\n' %\
-        (charge, multStr, calcStr, theory, opts['TS'])
+        output += ' TS\n'
     else:
         output += ' AUX LARGE CHARGE=%d %s %s %s\n' %\
         (charge, multStr, calcStr, theory)
@@ -79,6 +76,7 @@ def writeInputFileFromXYZ(opts, xyz_file, mop_file):
     with open(mop_file, 'w') as f:
         f.write(output)
     return output
+
 
 def writeInputFileFromMOL2(opts, mol2_file, mop_file):
     title = opts['Title']
@@ -119,24 +117,34 @@ def writeInputFileFromMOL2(opts, mol2_file, mop_file):
         f.write(output)
     return output
 
+
 def writeInputFile(opt, positions, names, file_name):
     with open(file_name, 'w') as f:
         f.write(generateInputFile(opt, positions, names))
 
+
 def mopacOut_to_xyz(mopac_file, outXYZ_file):
-    with open(mopac_file+'.arc', 'r') as f:
+    '''
+    :param mopac_file: file name without extension performed mop-process
+    :param outXYZ_file: xyz to write file
+    :return: None
+    '''
+    with open(mopac_file+'.arc', 'r') as farc:
         for _ in range(8):
-            f.readline()
-        info = f.readline().split()
+            farc.readline()
+        info = farc.readline().split()
         count = int(info[-2])
         formula = (info[:-3])
-        for _ in range(11):
-            f.readline()
-        energy = float(f.readline().split()[-2])
+
+    # with open(mopac_file+'.out', 'r') as f:
+    #     for _ in range(8):
+    #         f.readline()
+    #     info = f.readline().split()
+
     with open(mopac_file + '.out', 'r') as f:
         next(l for l in f if 'CARTESIAN COORDINATES' in l)
-        for _ in range(3):
-            next(f)
+        next(l for l in f if 'CARTESIAN COORDINATES' in l)
+        next(f)
         coords = [next(f) for _ in range(count)]
     with open(outXYZ_file, 'w') as f1:
         f1.write(str(count)+'\n')
@@ -144,33 +152,7 @@ def mopacOut_to_xyz(mopac_file, outXYZ_file):
         for i in coords:
             line = i.split()
             f1.write('{}\t{}\t{}\t{}\n'.format(line[1], line[2], line[3], line[4]))
-    return energy
 
-def mopacOut_to_xyz_with_energy(mopac_file, outXYZ_file):
-    try:
-        with open(mopac_file+'.arc', 'r') as f:
-            for _ in range(8):
-                f.readline()
-            info = f.readline().split()
-            count = int(info[-2])
-            formula = (info[:-3])
-            for _ in range(11):
-                f.readline()
-            energy = float(f.readline().split()[-2])
-    except:
-        return 0
-    with open(mopac_file + '.out', 'r') as f:
-        next(l for l in f if 'CARTESIAN COORDINATES' in l)
-        for _ in range(3):
-            next(f)
-        coords = [next(f) for _ in range(count)]
-    with open(outXYZ_file, 'w') as f1:
-        f1.write(str(count)+'\n')
-        f1.write(str(energy)+'\n')
-        for i in coords:
-            line = i.split()
-            f1.write('{}\t{}\t{}\t{}\n'.format(line[1], line[2], line[3], line[4]))
-    return energy
 
 def get_energy(mopac_file):
     with open(mopac_file, 'r') as f:
@@ -181,50 +163,73 @@ def get_energy(mopac_file):
         next(f)
         next(f)
         energy = float(next(f).split()[-2])
-        return energy
+    return energy
+
+def get_heat(mopac_file):
+    with open(mopac_file, 'r') as f:
+        try:
+            line = next(l for l in f if 'FINAL HEAT OF FORMATION' in l)
+
+        except:
+            return None
+        return float(line.split()[5])
+
+
+def get_energy_of_xyz(xyz_file, tmpdir=''):
+    del_flag = False
+    if tmpdir == '':
+        tmpdir = tempfile.mkdtemp()
+        del_flag = True
+    name = os.path.basename(os.path.normpath(xyz_file))
+    xyz_to_mop = os.path.join(tmpdir, name[:-4:] + '.mop')
+    header = ' AUX LARGE CHARGE=0 SINGLET NOOPT PM7\nTitle\n'
+    with open(xyz_file, 'r') as f:
+        with open(os.path.join(tmpdir, xyz_to_mop), 'w') as f_w:
+            f_w.write(header)
+            n = int(f.readline())
+            f.readline()
+            for _ in range(n):
+                line = f.readline().split()
+                f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(*line))
+    call(['/opt/mopac2/run_mopac', os.path.join(tmpdir, xyz_to_mop)])
+    a = get_energy(os.path.join(tmpdir, xyz_to_mop)[:-4]+'.out')
+    if del_flag: shutil.rmtree(tmpdir)
+    return a
+
+
+def get_heat_of_xyz(xyz_file, tmpdir=''):
+    del_flag = False
+    if tmpdir == '':
+        tmpdir = tempfile.mkdtemp()
+        del_flag = True
+    name = os.path.basename(os.path.normpath(xyz_file))
+    xyz_to_mop = os.path.join(tmpdir, name[:-4:] + '.mop')
+    header = ' AUX LARGE CHARGE=0 SINGLET NOOPT PM7\nTitle\n'
+    with open(xyz_file, 'r') as f:
+        with open(os.path.join(tmpdir, xyz_to_mop), 'w') as f_w:
+            f_w.write(header)
+            n = int(f.readline())
+            f.readline()
+            for _ in range(n):
+                line = f.readline().split()
+                f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(*line))
+    call(['/opt/mopac2/run_mopac', os.path.join(tmpdir, xyz_to_mop)])
+    a = get_heat(os.path.join(tmpdir, xyz_to_mop)[:-4]+'.out')
+    if del_flag: shutil.rmtree(tmpdir)
+    return a
 
 
 def get_energy_of_mol2(mol2_file):
     tmpdir = tempfile.mkdtemp()
     name = os.path.basename(os.path.normpath(mol2_file))
     xyz_to_mop = os.path.join(tmpdir, name[:-5:] + '.xyz')
-    xyz_to_mop_mop = os.path.join(tmpdir, name[:-5:] + '.mop')
     call(['babel', '-imol2', mol2_file, '-oxyz', xyz_to_mop])
-    header = ' AUX LARGE CHARGE=0 SINGLET NOOPT PM6\nTitle\n'
-    with open(xyz_to_mop, 'r') as f:
-        with open(os.path.join(tmpdir, xyz_to_mop_mop), 'w') as f_w:
-            f_w.write(header)
-            n = int(f.readline())
-            f.readline()
-            for _ in range(n):
-                line = f.readline().split()
-                f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(line[0], line[1], line[2], line[3]))
-    call(['/opt/mopac/run_script.sh', os.path.join(tmpdir, xyz_to_mop_mop)])
-    # shutil.rmtree(tmpdir)
-    return get_energy(os.path.join(tmpdir, xyz_to_mop_mop)[:-4]+'.out')
-
-def get_energy_of_xyz(xyz_file):
-    tmpdir = tempfile.mkdtemp()
-    name = os.path.basename(os.path.normpath(xyz_file))
-    xyz_to_mop = xyz_file
-    xyz_to_mop_mop = os.path.join(tmpdir, name[:-5:] + '.mop')
-    # call(['babel', '-imol2', mol2_file, '-oxyz', xyz_to_mop])
-    header = ' AUX LARGE CHARGE=0 SINGLET NOOPT PM6\nTitle\n'
-    with open(xyz_to_mop, 'r') as f:
-        with open(os.path.join(tmpdir, xyz_to_mop_mop), 'w') as f_w:
-            f_w.write(header)
-            n = int(f.readline())
-            f.readline()
-            for _ in range(n):
-                line = f.readline().split()
-                f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(line[0], line[1], line[2], line[3]))
-    call(['/opt/mopac/run_script.sh', os.path.join(tmpdir, xyz_to_mop_mop)])
-    shutil.rmtree(tmpdir)#add shutil in get_energy!!
-    return get_energy(os.path.join(tmpdir, xyz_to_mop_mop)[:-4]+'.out')
+    return get_energy_of_xyz(xyz_to_mop, tmpdir=tmpdir)
 
 
 def get_xyz_files(dir):
     return glob.glob(dir+'/*.xyz')
+
 
 def get_mop_files(dir):
     return glob.glob(dir+'/*.mop')
@@ -236,7 +241,7 @@ if __name__ == '__main__':
     options = {'Title': 'Smth info about optimization', 'Calculation Type': 'Single Point',
                               'Charge': 0, 'Multiplicity': 1, 'Theory': 'PM7'}
 
-    import shutil, tempfile
+
     import subprocess
     # print(get_energy_of_mol2('./q_compare/2_no_relax/My_2-Mn-OtBu_opt_q.mol2'))
     # print(get_energy_of_mol2('./q_compare/2_relax/My_2-Mn-OtBu_opt_q.mol2'))

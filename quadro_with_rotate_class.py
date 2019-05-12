@@ -1,12 +1,5 @@
-from math import acos, sin, pi, cos, atan, asin
-import matplotlib.pyplot as plt
 import numpy as np
 from numpy import arctan2
-from itertools import product
-from copy import deepcopy
-from mpl_toolkits.mplot3d import Axes3D
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
-from colors_from_plots import cnames
 
 
 def cartesian_to_spherical(vector):
@@ -37,17 +30,17 @@ class Spherical_divider():
 
 
     def find_section(self, p1, p0=np.zeros(3), get_error=False):
-        '''
+        """
             :param p0: this point has already basis
             :param p1: not important basis of p1
             :return: section of p0 atom in which there's p1
-            '''
+        """
         vec = p0 - p1
         vec = vec / np.linalg.norm(vec)
         ds = []
         for i, j in enumerate(self.scube):
             r = np.linalg.norm(vec - j)
-            if r < self.d_min*2:
+            if r < 2 * self.d_min:
                ds.append([r, i])
         d, ix = sorted(ds)[0]
         if get_error: return ix, d
@@ -57,5 +50,5 @@ class Spherical_divider():
     def set_anti_scube(self):
         self.anti_scube = {}
         for i, j in enumerate(self.scube):
-            self.anti_scube.update({i: self.find_section(-j)})
+            self.anti_scube.update({i: self.find_section(j)})
 

@@ -1,16 +1,19 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from numpy import dot, pi
+from __future__ import division
+
 from collections import OrderedDict
-import numpy as np
-from numpy.linalg import norm
 from itertools import combinations, product
+
+import numpy as np
+from numpy import dot, pi
+from numpy.linalg import norm
 
 from . import Math
 from .species_data import get_property
 
-bohr = 0.52917721092
+angstrom = 1/0.52917721092  #:
 
 
 class InternalCoord(object):
@@ -48,8 +51,11 @@ class Bond(InternalCoord):
     def weight(self, rho, coords):
         return rho[self.i, self.j]
 
+    def center(self, ijk):
+        return np.round(ijk[[self.i, self.j]].sum(0))
+
     def eval(self, coords, grad=False):
-        v = (coords[self.i]-coords[self.j])/bohr
+        v = (coords[self.i]-coords[self.j])*angstrom
         r = norm(v)
         if not grad:
             return r
@@ -74,9 +80,12 @@ class Angle(InternalCoord):
         return np.sqrt(rho[self.i, self.j]*rho[self.j, self.k]) *\
             (f+(1-f)*np.sin(self.eval(coords)))
 
+    def center(self, ijk):
+        return np.round(2*ijk[self.j])
+
     def eval(self, coords, grad=False):
-        v1 = (coords[self.i]-coords[self.j])/bohr
-        v2 = (coords[self.k]-coords[self.j])/bohr
+        v1 = (coords[self.i]-coords[self.j])*angstrom
+        v2 = (coords[self.k]-coords[self.j])*angstrom
         dot_product = np.dot(v1, v2)/(norm(v1)*norm(v2))
         if dot_product < -1:
             dot_product = -1
@@ -121,13 +130,16 @@ class Dihedral(InternalCoord):
         f = 0.12
         th1 = Angle(self.i, self.j, self.k).eval(coords)
         th2 = Angle(self.j, self.k, self.l).eval(coords)
-        return (rho[self.i, self.j]*rho[self.j, self.k]*rho[self.k, self.l])**(1./3) * \
+        return (rho[self.i, self.j]*rho[self.j, self.k]*rho[self.k, self.l])**(1/3) * \
             (f+(1-f)*np.sin(th1))*(f+(1-f)*np.sin(th2))
 
+    def center(self, ijk):
+        return np.round(ijk[[self.j, self.k]].sum(0))
+
     def eval(self, coords, grad=False):
-        v1 = (coords[self.i]-coords[self.j])/bohr
-        v2 = (coords[self.k]-coords[self.l])/bohr
-        w = (coords[self.k]-coords[self.j])/bohr
+        v1 = (coords[self.i]-coords[self.j])*angstrom
+        v2 = (coords[self.l]-coords[self.k])*angstrom
+        w = (coords[self.k]-coords[self.j])*angstrom
         ew = w/norm(w)
         a1 = v1-dot(v1, ew)*ew
         a2 = v2-dot(v2, ew)*ew
@@ -181,7 +193,7 @@ def get_clusters(C):
     nonassigned = list(range(len(C)))
     clusters = []
     while nonassigned:
-        queue = set([nonassigned[0]])
+        queue = {nonassigned[0]}
         clusters.append([])
         while queue:
             node = queue.pop()
@@ -196,8 +208,9 @@ def get_clusters(C):
 
 
 class InternalCoords(object):
-    def __init__(self, geom, allowed=None):
+    def __init__(self, geom, allowed=None, dihedral=True, superweakdih=False):
         self._coords = []
+        n = len(geom)
         geom = geom.supercell()
         dist = geom.dist(geom)
         radii = np.array([get_property(sp, 'covalent_radius') for sp in geom.species])
@@ -219,8 +232,17 @@ class InternalCoords(object):
                 ang = Angle(i, j, k, C=C)
                 if ang.eval(geom.coords) > pi/4:
                     self.append(ang)
-        for bond in self.bonds:
-            self.extend(get_dihedrals([bond.i, bond.j], geom.coords, bondmatrix, C))
+        if dihedral:
+            for bond in self.bonds:
+                self.extend(get_dihedrals(
+                    [bond.i, bond.j],
+                    geom.coords,
+                    bondmatrix,
+                    C,
+                    superweak=superweakdih,
+                ))
+        if geom.lattice is not None:
+            self._reduce(n)
 
     def append(self, coord):
         self._coords.append(coord)
@@ -298,6 +320,19 @@ class InternalCoords(object):
                 q[i] = 2*pi-q[i]
         return q
 
+    def _reduce(self, n):
+        idxs = np.int64(np.floor(np.array(range(3**3*n))/n))
+        idxs, i = np.divmod(idxs, 3)
+        idxs, j = np.divmod(idxs, 3)
+        k = idxs % 3
+        ijk = np.vstack((i, j, k)).T-1
+        self._coords = [
+            coord for coord in self._coords
+            if np.all(np.isin(coord.center(ijk), [0, -1]))
+        ]
+        idxs = {i for coord in self._coords for i in coord.idx}
+        self.fragments = [frag for frag in self.fragments if set(frag) & idxs]
+
     def hessian_guess(self, geom):
         geom = geom.supercell()
         rho = geom.rho()
@@ -324,7 +359,7 @@ class InternalCoords(object):
         # target = CartIter(q=q+dq)
         # prev = CartIter(geom.coords, q, dq)
         for i in range(20):
-            coords_new = geom.coords+B_inv.dot(dq).reshape(-1, 3)*bohr
+            coords_new = geom.coords+B_inv.dot(dq).reshape(-1, 3)/angstrom
             dcart_rms = Math.rms(coords_new-geom.coords)
             geom.coords = coords_new
             q_new = self.eval_geom(geom, template=q)
@@ -343,33 +378,45 @@ class InternalCoords(object):
         return q, geom
 
 
-def get_dihedrals(center, coords, bondmatrix, C):
-    neigh_l = [n for n in np.flatnonzero(bondmatrix[center[0], :]) if n != center[1]]
-    neigh_r = [n for n in np.flatnonzero(bondmatrix[center[-1], :]) if n != center[-2]]
+def get_dihedrals(center, coords, bondmatrix, C, superweak=False):
+    neigh_l = [n for n in np.flatnonzero(bondmatrix[center[0], :]) if n not in center]
+    neigh_r = [n for n in np.flatnonzero(bondmatrix[center[-1], :]) if n not in center]
     angles_l = [Angle(i, center[0], center[1]).eval(coords) for i in neigh_l]
     angles_r = [Angle(center[-2], center[-1], j).eval(coords) for j in neigh_r]
-    nonlinear_l = [n for n, ang in zip(neigh_l, angles_l) if ang < pi-1e-3]
-    nonlinear_r = [n for n, ang in zip(neigh_r, angles_r) if ang < pi-1e-3]
-    linear_l = [n for n, ang in zip(neigh_l, angles_l) if ang > pi-1e-3]
-    linear_r = [n for n, ang in zip(neigh_r, angles_r) if ang > pi-1e-3]
+    nonlinear_l = [
+        n for n, ang in zip(neigh_l, angles_l) if ang < pi-1e-3 and ang >= 1e-3
+    ]
+    nonlinear_r = [
+        n for n, ang in zip(neigh_r, angles_r) if ang < pi-1e-3 and ang >= 1e-3
+    ]
+    linear_l = [n for n, ang in zip(neigh_l, angles_l) if ang >= pi-1e-3 or ang < 1e-3]
+    linear_r = [n for n, ang in zip(neigh_r, angles_r) if ang >= pi-1e-3 or ang < 1e-3]
     assert len(linear_l) <= 1
     assert len(linear_r) <= 1
     if center[0] < center[-1]:
-        nweak = len(list(
-            None for i in range(len(center)-1)
-            if not C[center[i], center[i+1]]
-        ))
-        dihedrals = [Dihedral(
-            nl,
-            center[0],
-            center[-1],
-            nr,
-            weak=nweak + (0 if C[nl, center[0]] else 1) + (0 if C[center[0], nr] else 1),
-            angles=(
-                Angle(nl, center[0], center[1], C=C),
-                Angle(nl, center[-2], center[-1], C=C)
-            )
-        ) for nl, nr in product(nonlinear_l, nonlinear_r) if nl != nr]
+        nweak = len(
+            [None for i in range(len(center)-1) if not C[center[i], center[i+1]]]
+        )
+        dihedrals = []
+        for nl, nr in product(nonlinear_l, nonlinear_r):
+            if nl == nr:
+                continue
+            weak = nweak + \
+                (0 if C[nl, center[0]] else 1) + \
+                (0 if C[center[0], nr] else 1)
+            if not superweak and weak > 1:
+                continue
+            dihedrals.append(Dihedral(
+                nl,
+                center[0],
+                center[-1],
+                nr,
+                weak=weak,
+                angles=(
+                    Angle(nl, center[0], center[1], C=C),
+                    Angle(nl, center[-2], center[-1], C=C)
+                )
+            ))
     else:
         dihedrals = []
     if len(center) > 3:

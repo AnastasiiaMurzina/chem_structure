@@ -1,45 +1,6 @@
 import numpy as np
-
-class Atom():
-    def __init__(self, name, name_with_i, i1, i2, i3):
-        self.name = name
-        self.x = 0
-        self.y = 0
-        self.z = 0
-        self.name_i = name_with_i
-        self.i1 = i1
-        self.i2 = i2
-        self.i3 = i3
-        self.orientation = (0, 0)
-
-    def set_xyz(self, x, y, z):
-        self.z = z
-        self.y = y
-        self.x = x
-
-    def to_string(self):
-        return '\t'.join(list(map(str, [self.name, self.x, self.y, self.z, self.name_i, self.i1, self.i2, self.i3])))
-
-    def set_orientation(self, basis):
-        self.orientation = basis
-
-    def position(self):
-        return np.array([self.x, self.y, self.z])
-
-
-class Bond():
-    def __init__(self, c1, c2, attr, length=1., sections=0):
-        self.connected = {c1, c2} # c1<c2
-        self.attr = attr
-        self.length = length
-        self.sections = sections # [section_c1, section_c2]
-
-    def set_length(self, length):
-        self.length = length
-
-
-    def set_section(self, sections):
-        self.sections = sections
+from copy import deepcopy
+import rmsd
 
 
 def read_mol2(file_name):
@@ -58,6 +19,16 @@ def check_mol2_line(file_name):
             pass
         return len(f.readline().split())
 
+def bonds_of_paired(bonds):
+    '''
+    :param bonds: in format {1: [[[2,1]], (2,1)], ...}
+    :return: bonds in format {(c_1, c_2): [length, sections, attr], ...}
+    '''
+    paired_bonds = {}
+    for _, item in bonds.items():
+        paired_bonds.update({tuple(sorted(list(item.connected))): [item.length, item.sections, item.attr]})
+    return paired_bonds
+
 
 def xyz_names(file_name):
     positions = read_mol2(file_name)[1].split()[1::]
@@ -71,6 +42,46 @@ def xyz_names(file_name):
                                                  float(positions[ns * i + 4])])})
     return xyz # , names
 
+class Atom():
+    def __init__(self, name, name_with_i, i1, i2, i3):
+        self.name = name
+        self.x = 0
+        self.y = 0
+        self.z = 0
+        self.name_i = name_with_i
+        self.i1 = i1
+        self.i2 = i2
+        self.i3 = i3
+
+    def set_xyz(self, x, y, z):
+        self.z = z
+        self.y = y
+        self.x = x
+
+    def defto_string(self):
+        return '\t'.join(list(map(str, [self.name, self.x, self.y, self.z, self.name_i, self.i1, self.i2, self.i3])))
+
+
+    def position(self):
+        return np.array([self.x, self.y, self.z])
+
+
+class Bond():
+    def __init__(self, c1, c2, attr='1', length=1., section=0):
+        self.c1 = c1
+        self.c2 = c2
+        self.attr = attr
+        self.length = length
+        self.section = section # relatively c1
+
+    def set_length(self, length):
+        self.length = length
+
+    def set_section(self, section):
+        self.section = section
+
+    def set_attr(self, attr):
+        self.attr = attr
 
 def xyz_names_bonds(file_name):
     _, positions, bondsf = read_mol2(file_name)
@@ -79,15 +90,11 @@ def xyz_names_bonds(file_name):
     atoms, xyz, bonds = {}, {}, {}
     ns = check_mol2_line(file_name)
     for i in range(len(positions) // ns):
-        # print(positions[ns*i + 5])
         atom = Atom(positions[ns * i + 1], positions[ns*i + 5],
                     positions[ns*i + 6], positions[ns*i + 7],
                     float(positions[ns*i + 8]))
         atom.set_xyz(float(positions[ns * i + 2]), float(positions[ns * i + 3]), float(positions[ns * i + 4]))
         atoms.update({i+1: atom})
-        # xyz.update({int(positions[ns * i]): np.array([float(positions[ns * i + 2]),
-        #                                          float(positions[ns * i + 3]),
-        #                                          float(positions[ns * i + 4])])})
     bonds = []
     for i in range(len(bondsf) // 4):
         b1, b2, attr = bondsf[4 * i + 1:4 * i + 4:]
@@ -115,6 +122,57 @@ def atoms_and_bonds(file_name, bonds_choice=False):
         return atoms, bonds
     return atoms
 
+def compare_structers(mol1, mol2):
+    mol1 -= rmsd.centroid(mol1)
+    mol2 -= rmsd.centroid(mol2)
+    rotate = rmsd.kabsch(mol2, mol1)
+    mol2 = np.dot(mol2, rotate)
+    return rmsd.rmsd(mol1, mol2)
+
+def xyz_to_array(file_name):
+    with open(file_name, 'r') as f:
+        n = int(f.readline())
+        f.readline()
+        lines = []
+        for _ in range(n):
+            lines.append([float(i) if len(i) > 3 and i[3:].isdigit() else i for i in f.readline().split()])
+    return lines
+
+def bonds_to_dict(bonds):
+    '''
+    :param bonds:
+    :return: {atom1: {atom2: Bond(atom1, atom2, attr) } }
+    '''
+    d = {}
+    for i in bonds:
+        if d.get(i[0]):
+            d[i[0]].update({i[1]: Bond(i[0], i[1], i[2])})
+        else:
+            d.update({i[0]: {i[1]: Bond(i[0], i[1], i[2])}})
+        if d.get(i[1]):
+            d[i[1]].update({i[0]: Bond(i[1], i[0], i[2])})
+        else:
+            d.update({i[1]: {i[0]: Bond(i[1], i[0], i[2])}})
+    return d
+
 if __name__ == "__main__":
+    pass
     # bonds = (xyz_names_bonds('Caffein.mol2')[-1])
-    atoms = atoms_and_bonds('Caffein.mol2')
+    # atoms = atoms_and_bonds('Caffein.mol2')
+
+    # a = Molecule('./many_opted_mol2s/3a-MnH2-ads-MeOAc_opted.mol2')
+    # a = Molecule('./ordered_mol2/js_exapmle_init.mol2')
+    #
+    # a.set_notation()
+    # before = a.to_positions_array()
+    # struct = a.from_notation()
+    #
+    #
+    # b = deepcopy(a)
+    # for k, pos in struct.items():
+    #     b.atoms[k].set_xyz(*pos)
+    # b.to_mol2('uncompressed.mol2')
+    # after = b.to_positions_array()
+    #
+    # print(compare_structers(before, after))
+
