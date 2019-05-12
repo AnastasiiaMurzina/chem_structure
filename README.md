@@ -18,3 +18,27 @@ for geom in optimizer:
 ####################### 
 
 python -mSimpleHTTPServer 8123
+
+
+
+### One molecule from original mol2 to restored from notation
+
+```
+from mol_api import Molecule
+mol = Molecule("example.mol2")
+```
+
+### Many molecules -- SOON
+Now it've released like '0'-bonds in mol2-file
+### Align
+
+Using rmsd (pip install rmsd) 
+```
+import rmsd
+
+coord -= rmsd.centroid(coord)
+coord3 -= rmsd.centroid(coord3)
+rotate = rmsd.kabsch(coord3, coord)
+coord3 = np.dot(coord3, rotate)
+rmsd.rmsd(coord, coord3)
+```
