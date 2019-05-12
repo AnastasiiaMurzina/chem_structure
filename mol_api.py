@@ -235,7 +235,7 @@ class Molecule:
         self.notation.bonds[c1].update({c2: Bond(c1, c2, attr=attr, length=length, section=section)})
         self.notation.bonds[c2].update({c1: Bond(c2, c1, attr=attr, length=length, section=asection)})
         self.notation.notation[c1].update({c2: section})
-        # self.notation.notation[c2].update({c1: asection})
+        self.notation.notation[c2].update({c1: asection})
 
     def check_c1_section_is_free(self, c1, section):
         sections = [i for _, i in c1.items()]
@@ -387,9 +387,9 @@ def real_random_path(reactant, product):
     print('initial msd', msd, 'd', d)
     print('rmsd accept probability')
     # print('length accept probability')
-    for _ in range(100):
-        if d_pr[1] < d[1] or d_pr[2] < d[2] or np.random.random() < np.exp(-(d_pr[2]/d[2])):
-        # if d_pr[1] < d[1] or d_pr[2] < d[2] or np.random.random() < np.exp(-np.exp((msd_pr/msd)**2)):
+    for _ in range(10000000):
+        # if d_pr[1] < d[1] or d_pr[2] < d[2] or np.random.random() < np.exp(-(d_pr[2]/d[2])):
+        if d_pr[1] < d[1] or d_pr[2] < d[2] or np.random.random() < np.exp(-np.exp((msd_pr/msd)**2)):
             mut = mut_pr
             d = d_pr
             msd = msd_pr
@@ -398,13 +398,12 @@ def real_random_path(reactant, product):
             d_pr = mut_pr.notation.diff(product.notation)
             msd_pr = compare_structers(mut_pr.to_positions_array(), product.to_positions_array())
             msds.append(msd)
-            print(msd)
     print('final msd', msd, 'd', d)
     plt.plot(list(range(len(msds))), msds)
     plt.show()
 
 
-def random_to_the_aim_search(reactant, product):
+def random_to_the_aim_search(reactant, product): #TODO implement here add of bonds
     """
     :return: energies_path and length of sections changes
     """
@@ -440,7 +439,7 @@ if __name__ == '__main__':
     # params = {'n': 1,
     #           'reaction': 'mopac_example', #'3a->4'
     #           }
-    n = 5
+    n = 2
     reaction = 'mopac_example' # '3a->4' #
     # reaction = '3a->4' #
     if reaction == '3a->4':
@@ -452,16 +451,14 @@ if __name__ == '__main__':
         pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
         pr.refresh_dimensional()
     ln.refresh_dimensional()
-    p, ms = random_to_the_aim_search(ln, pr)
-    # here = real_random_path(ln, pr)
-    # print(here)
-    print(max(p))
-    print(p)
+    # p, ms = random_to_the_aim_search(ln, pr)
+    real_random_path(ln, pr)
+    # print(max(p))
+    # print(p)
+    #
+    # print(max(ms))
+    # print(ms)
 
-    print(max(ms))
-    print(ms)
-
-    # real_random_path(ln, pr)
     # print(pr.compare_with(np.array([i for _, i in dimensional_structure(pr.notation).items()])))
     # name_heat = reaction + 'start.xyz'
     # pr.to_xyz(name_heat)
