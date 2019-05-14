@@ -203,7 +203,7 @@ def get_heat_of_xyz(xyz_file, tmpdir=''):
         tmpdir = tempfile.mkdtemp()
         del_flag = True
     name = os.path.basename(os.path.normpath(xyz_file))
-    xyz_to_mop = os.path.join(tmpdir, name[:-4:] + '.mop')
+    xyz_to_mop = os.path.join(tmpdir, name + '.mop')
     header = ' AUX LARGE CHARGE=0 SINGLET NOOPT PM7\nTitle\n'
     with open(xyz_file, 'r') as f:
         with open(os.path.join(tmpdir, xyz_to_mop), 'w') as f_w:
@@ -214,7 +214,7 @@ def get_heat_of_xyz(xyz_file, tmpdir=''):
                 line = f.readline().split()
                 f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(*line))
     call(['/opt/mopac2/run_mopac', os.path.join(tmpdir, xyz_to_mop)])
-    a = get_heat(os.path.join(tmpdir, xyz_to_mop)[:-4]+'.out')
+    a = get_heat(os.path.join(tmpdir, name)+'.out')
     if del_flag: shutil.rmtree(tmpdir)
     return a
 
