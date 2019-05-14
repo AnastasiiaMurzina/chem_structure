@@ -50,7 +50,7 @@ def check(notation, dim_structure_reduced, eps=0.01): #TODO fix relaxation
                     force = force + d
             n_f = np.linalg.norm(force)
             forces_next += n_f
-            dim_structure_reduced[atom] = dim_structure_reduced[atom] + eps*force
+            dim_structure_reduced[atom] = dim_structure_reduced[atom] - eps*force
     return dim_structure_reduced
 
 def dimensional_structure(notation, relax=True):
@@ -72,7 +72,7 @@ def dimensional_structure(notation, relax=True):
                 coord = div[s]*notation.bonds[cur_key][i].length + dim_structure[cur_key]
                 dim_structure.update({i: coord})
                 p.append([i, list(bonds_l.pop(i).keys())])
-                # if relax: dim_structure = check(notation, dim_structure)
+                if relax: dim_structure = check(notation, dim_structure)
     return dim_structure
 
 
