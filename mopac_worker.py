@@ -157,12 +157,10 @@ def mopacOut_to_xyz(mopac_file, outXYZ_file):
 def get_energy(mopac_file):
     with open(mopac_file, 'r') as f:
         try:
-            next(l for l in f if 'FINAL HEAT OF FORMATION' in l)
+            line = next(l for l in f if 'TOTAL ENERGY' in l)
         except:
             return None
-        next(f)
-        next(f)
-        energy = float(next(f).split()[-2])
+        energy = float(line.split()[-2])
     return energy
 
 def get_heat(mopac_file):
@@ -192,7 +190,7 @@ def get_energy_of_xyz(xyz_file, tmpdir=''):
                 line = f.readline().split()
                 f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(*line))
     call(['/opt/mopac2/run_mopac', os.path.join(tmpdir, xyz_to_mop)])
-    a = get_energy(os.path.join(tmpdir, xyz_to_mop)[:-4]+'.out')
+    a = get_energy(os.path.join(tmpdir, xyz_to_mop[:-4])+'.out')
     if del_flag: shutil.rmtree(tmpdir)
     return a
 
