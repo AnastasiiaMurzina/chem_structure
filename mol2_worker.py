@@ -135,8 +135,8 @@ def xyz_to_array(file_name):
         f.readline()
         lines = []
         for _ in range(n):
-            lines.append([float(i) if len(i) > 3 and i[3:].isdigit() else i for i in f.readline().split()])
-    return lines
+            lines.append(np.array([float(i) for i in f.readline().split()[1::]]))
+    return np.array(lines)
 
 def bonds_to_dict(bonds):
     '''

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from layouter import *
 from mol2_worker import read_mol2, Atom, xyz_names_bonds, compare_structers, Bond, bonds_to_dict
-from mopac_worker import get_heat_of_xyz
+from mopac_worker import get_heat_of_xyz, get_energy_of_xyz
 from quadro_with_rotate_class import Spherical_divider
 
 
@@ -93,7 +93,7 @@ class Notation:
             s1 = np.array([i for _, i in i_1.items()])
             s2 = np.array([i_2.get(inx) for inx in ki1])
             for a, sec1, sec2 in zip(i_1.items(), s1, s2):
-                if sec1 != sec2:
+                if (not sec2 is None) and sec1 != sec2:
                     s_d.append([k_1, a[0], sec2])
         return s_d
 
@@ -123,14 +123,29 @@ class Notation:
         if tmp == '':
             tmp = mkdtemp()
             del_flag = True
-        ds = [i for _, i in dimensional_structure(self).items()]
         file = os.path.join(tmp, 'to_calc_heat.xyz')
         with open(file, 'w') as f:
             n = len(names)
             f.write(str(n) + '\n\n')
             for ix in range(n):
-                f.write('{}\t{}\t{}\t{}\n'.format(names[ix], *list(map(str, ds[ix]))))
+                f.write('{}\t{}\t{}\t{}\n'.format(names[ix], self.atoms[ix+1].x, self.atoms[ix+1].y, self.atoms[ix+1].z))
         heat = get_heat_of_xyz(file, tmpdir=tmp)
+        if del_flag: rmtree(tmp)
+        return heat
+
+    def get_energy(self, tmp=''):
+        del_flag = False
+        names = [i.name for _, i in self.atoms.items()]
+        if tmp == '':
+            tmp = mkdtemp()
+            del_flag = True
+        file = os.path.join(tmp, 'to_calc_heat.xyz')
+        with open(file, 'w') as f:
+            n = len(names)
+            f.write(str(n) + '\n\n')
+            for ix in range(n):
+                f.write('{}\t{}\t{}\t{}\n'.format(names[ix], self.atoms[ix+1].x, self.atoms[ix+1].y, self.atoms[ix+1].z))
+        heat = get_energy_of_xyz(file, tmpdir=tmp)
         if del_flag: rmtree(tmp)
         return heat
 
@@ -155,10 +170,9 @@ class Notation:
             k_1, inx, j = s_d[indx]
             self.notation[k_1][inx] = j
             self.bonds[k_1][inx].set_section(j)
-            self.bonds[k_1][inx].set_section(self.divider.anti_scube[j])
+            self.bonds[inx][k_1].set_section(self.divider.anti_scube[j])
             return 0
-        else:
-            return -1
+        return -1
 
     def l_change_step(self, to_the_notation):
         l_d = self.l_diff(to_the_notation)
@@ -167,8 +181,7 @@ class Notation:
             k_1, inx, j = l_d[indx]
             self.bonds[k_1][inx].set_length(j)
             return 0
-        else:
-            return -1
+        return -1
 
     def l_change(self, to_the_notation, follow_energy=False, sh=False, keep_change=False):
         if follow_energy:
@@ -211,6 +224,12 @@ class Molecule:
             self.atoms[k].y = i[1]
             self.atoms[k].z = i[2]
 
+    def set_dimensional(self, positions):
+        for k, i in enumerate(positions):
+            self.atoms[k+1].x = i[0]
+            self.atoms[k+1].y = i[1]
+            self.atoms[k+1].z = i[2]
+
     def set_n(self, n):
         self.n = n
         self.notation = Notation(n=n, info_from_file=xyz_names_bonds(self.mol2file))
@@ -246,12 +265,12 @@ class Molecule:
 
     def to_mol2(self, mol2file):
         with open(mol2file, 'w') as f:
-            f.write('@<TRIPOS>MOLECULE\n*****\n{} {} 0 0 0\nSMALL\nGASTEIGER\n\n@<TRIPOS>ATOM\n'.format(str(len(self.atoms)), str(len(self.bonds))))
+            f.write('@<TRIPOS>MOLECULE\n*****\n{} {} 0 0 0\nSMALL\nGASTEIGER\n\n@<TRIPOS>ATOM\n'.format(str(len(self.atoms)), str(len(self.bonds_from_mol2))))
             for k, atom in self.atoms.items():
                 f.write(('\t{}'*9+'\n').format(k, atom.name, atom.x, atom.y, atom.z, atom.name_i, atom.i1, atom.i2, atom.i3))
             f.write('@<TRIPOS>BOND\n')
-            for k, bond in self.bonds.items():
-                f.write('\t{}\t{}\t{}\t{}\n'.format(k, *bond.connected, bond.attr))
+            for k, bond in self.bonds_from_mol2.items():
+                f.write('\t{}\t{}\t{}\t{}\n'.format(k, bond.c1, bond.c2, bond.attr))
 
     def to_xyz(self, xyzfile, mode='w'):
         with open(xyzfile, mode) as f:
@@ -264,6 +283,10 @@ class Molecule:
         for _, atom in self.atoms.items():
             pos.append(atom.position())
         return np.array(pos)
+
+    def interact_pair(self, distance=1.5, no_less_than=0.5):
+        # TODO
+        pass
 
     def compare_with(self, xyz_positions):
         origin = copy.deepcopy(self.to_positions_array())
@@ -326,17 +349,17 @@ class Molecule:
             self.add_bond(a1, a2, round(np.random.normal(1.1, 0.3), 2), np.random.randint(len(self.notation.divider.scube)))
         return child
 
-    def mutation(self, bond_exist=True, length_change=0.5):
+    def mutation(self):
         mutant = copy.deepcopy(self)
         a1, a2 = self.atom_and_bonded_with_it()
         choi = np.random.random()
-        if choi < 0.33:
+        if choi < 0.4:
             n_section = np.random.randint(0, len(self.notation.divider.scube))
             while not self.check_c1_section_is_free(self.notation.notation[a1], n_section):
                 n_section = np.random.randint(0, len(self.notation.divider.scube))
             mutant.notation.notation[a1][a2] = n_section
             mutant.notation.notation[a2][a1] = self.notation.divider.anti_scube[n_section]
-        elif choi > 0.67:
+        elif choi < 0.8:
             dl = np.random.normal(0, 0.5, 1)[0]
             mutant.notation.bonds[a1][a2].set_length(mutant.notation.bonds[a1][a2].length + round(dl, 1))
         else:
@@ -375,12 +398,22 @@ def searcher(substrat, product,zero_bonds_only=False,
             st = copy.deepcopy(ch)
     return paths
 
-def real_random_path(reactant, product, n=10000, write=False):
+def real_random_path(reactant, product, n=10000, write=False, file_log='random_search_report'):
     '''
     :param reactant, product: Molecule
     :param n: number of loops
     :return: show plot of rmsds
     '''
+    def apply_change():
+        mut.refresh_dimensional()
+        # path.append(reactant.notation.get_heat())
+        msds.append(compare_structers(mut.to_positions_array(), product.to_positions_array()))
+        if write:
+            mut.to_xyz(file_log, mode='a')
+            with open(file_log, 'a') as f_w:
+                f_w.write('################\n')
+    with open(file_log, 'w') as f_w:
+        f_w.write('\n\n\n')
     mut = copy.deepcopy(reactant)
     d = reactant.notation.diff(product.notation)
     msd = compare_structers(mut.to_positions_array(), product.to_positions_array())
@@ -389,20 +422,25 @@ def real_random_path(reactant, product, n=10000, write=False):
     d_pr = mut_pr.notation.diff(product.notation)
     msd_pr = compare_structers(mut_pr.to_positions_array(), product.to_positions_array())
     msds = [msd]
+    apply_change()
     print('initial msd', msd, 'd', d)
     print('rmsd accept probability')
     for _ in range(n):
         # if d_pr[1] < d[1] or d_pr[2] < d[2] or np.random.random() < np.exp(-(d_pr[2]/d[2])):
-        if d_pr[1] < d[1] or d_pr[2] < d[2] or np.random.random() < np.exp(-np.exp((msd_pr/msd)**2)):
-            mut = mut_pr
-            d = d_pr
-            msd = msd_pr
-            mut_pr = mut.mutation()
-            mut_pr.refresh_dimensional()
-            d_pr = mut_pr.notation.diff(product.notation)
-            msd_pr = compare_structers(mut_pr.to_positions_array(), product.to_positions_array())
+        if d_pr[1] < d[1] or d_pr[2] < d[2] or msd_pr < msds[0]*1.5:
+            mut, d, msd = copy.deepcopy(mut_pr), d_pr, msd_pr
             msds.append(msd)
+            apply_change()
+        mut_pr = mut.mutation()
+        mut_pr.refresh_dimensional()
+        d_pr = mut_pr.notation.diff(product.notation)
+        msd_pr = compare_structers(mut_pr.to_positions_array(), product.to_positions_array())
     print('final msd', msd, 'd', d)
+    if write:
+        f = open(file_log, 'r+')
+        f.seek(0, 0)
+        f.write(str(len(msds)-1)+'\n')
+        f.close()
     plt.plot(list(range(len(msds))), msds)
     plt.show()
 
@@ -423,7 +461,8 @@ def random_to_the_aim_search(reactant, product, write=False, file_log='reaction_
         f_w.write('\n\n\n')
     d = reactant.notation.diff(product.notation)
     # path = [reactant.notation.get_heat()]
-    msds = [compare_structers(reactant.to_positions_array(), product.to_positions_array())]
+    msds = []
+    apply_change()
     while d[2] > 0.1 and d[1] != 0:
         if np.random.random() < 0.5:
             reactant.notation.s_change_step(product.notation)
@@ -452,29 +491,54 @@ def random_to_the_aim_search(reactant, product, write=False, file_log='reaction_
 
 
 if __name__ == '__main__':
-    # params = {'n': 1,
-    #           'reaction': 'mopac_example', #'3a->4'
-    #           }
     n = 2
-    reaction = 'mopac_example' # '3a->4' #
-    # reaction = '3a->4' #
+    # reaction = 'mopac_example' # '3a->4' #
+    reaction = '3a->4' #
+    # reaction = 'vanadii'
     if reaction == '3a->4':
-        ln = Molecule('./ordered_mol2/3a.mol2', n=n)
-        pr = Molecule('./ordered_mol2/4_opted.mol2', n=n)
+        ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n)
+        pr = Molecule('./prepared_mols2/4_opted.mol2', n=n)
+        pr.refresh_dimensional()
+    elif reaction == 'vanadii':
+        ln = Molecule('./vanadii/3a_singlet_opted.mol2', n=n)
+        pr = Molecule('./vanadii/ts_3a_4a_opted.mol2', n=n)
         pr.refresh_dimensional()
     else:
         ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
         pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
         pr.refresh_dimensional()
-    ln.refresh_dimensional()
-    # ms = random_to_the_aim_search(ln, pr, write=True)
-    real_random_path(ln, pr)
+    from mol2_worker import xyz_to_array
+    import itertools
+    a1 = xyz_to_array('./prepared_mols2/3a_opted.xyz')
+    a1[42], a1[47] = a1[47], a1[42]
+    a2 = xyz_to_array('./prepared_mols2/4_opted.xyz')
+    # scores = []
+    # for i in itertools.permutations(a1):
+    print(compare_structers(a1, a2))
+        # print(scores[-1])
+    # print(min(scores))
+    # ll = ln.to_positions_array()
+    # pp = pr.to_positions_array()
+    # import rmsd
+    # ll -= rmsd.centroid(ll)
+    # pp -= rmsd.centroid(pp)
+    # rotate = rmsd.kabsch(pp, ll)
+    # pp = np.dot(pp, rotate)
+    # ln.set_dimensional(ll)
+    # pr.set_dimensional(pp)
+    # ln.to_mol2('./vanadii/3a_singlet_rot.mol2')
+    # pr.to_mol2('./vanadii/ts_3a_4_rot.mol2')
+    # compare_structers()
+    # print(ln.notation.get())
+    # ms = random_to_the_aim_search(ln, pr, write=True, file_log=reaction+'_report_opted')
+    # print(ms[-1])
+    # print(ln.notation.get_energy())
+    # print(pr.notation.get_energy())
+    # real_random_path(ln, pr, n=10000, write=True, file_log=reaction+'_random_report')
     # print(max(p))
     # print(p)
-    #
     # print(max(ms))
     # print(ms)
-
     # print(pr.compare_with(np.array([i for _, i in dimensional_structure(pr.notation).items()])))
     # name_heat = reaction + 'start.xyz'
     # pr.to_xyz(name_heat)
