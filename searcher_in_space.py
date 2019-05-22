@@ -239,7 +239,7 @@ def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file
     distance = [compare_structers(mol1.to_positions_array(), to_mol.to_positions_array())]
     difference = [mol1.notation.diff(to_mol.notation)]
     energies = [mol1.get_energy(tmp=temp_dir)]
-    solver = Equation_system(mut.interact_pair(), energies[0])
+    solver = Equation_system(mut.length_interaction(), energies[0])
     print('initial parameters')
     print('initial energy', energies[0])
     print('initial rmsd', distance[0])
@@ -252,23 +252,24 @@ def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file
         difference_pr = mut_pr.notation.diff(to_mol.notation) # d[1] - diff_of_sections, d[2] - summ diff of lengths
         msd_pr = compare_structers(mut_pr.to_positions_array(), to_mol.to_positions_array())
         vars_linear_approx = mut_pr.interact_pair()
-        # if np.random.random() < np.exp(-len(solver.variables)/len(solver.equations))\
-        #         and solver.check_system() and solver.can_i_solve_it(vars_linear_approx):
-        #     print('could')
-        #     ss = solver.solve()
-        #     if ss == -1:
-        #         energy_pr = None
-        #     else:
-        #         energy_pr = apply_solution(ss, vars_linear_approx)
-        # else:
-        energy_pr = mut_pr.get_energy(tmp=temp_dir)
+        if np.random.random() < np.exp(-len(solver.variables)/len(solver.equations))\
+                and solver.check_system() and solver.can_i_solve_it(vars_linear_approx):
+            print('could')
+            ss = solver.solve()
+            if ss == -1:
+                energy_pr = None
+            else:
+                energy_pr = apply_solution(ss, vars_linear_approx)
+                print('good')
+        else:
+            energy_pr = mut_pr.get_energy(tmp=temp_dir)
         if energy_pr is None:
             continue
-        # solver.push(mut_pr.interact_pair(), energy_pr)
-        # if difference[-1] < difference_pr or distance[-1] < msd_pr\
-        #         or np.random.random() < np.exp(-(energy_pr/energies[-1])**2):
-        if difference[-1] < difference_pr or distance[-1] < msd_pr \
-                and energy_pr < -4680.:
+        solver.push(mut_pr.interact_pair(), energy_pr)
+        if difference[-1] < difference_pr or distance[-1] < msd_pr\
+                or np.random.random() < np.exp(-(energy_pr/energies[-1])**2):
+        # if difference[-1] < difference_pr or distance[-1] < msd_pr \
+        #         and energy_pr < -4680.:
             apply_change()
             print('rmsd accept', msd_pr)
             print('difference accept', difference_pr)
@@ -280,7 +281,7 @@ def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file
 
 
 if __name__ == '__main__':
-    n = 2
+    n = 10
     # reaction = 'mopac_example' # '3a->4' #
     reaction = '3a->4' #
     # reaction = 'vanadii'

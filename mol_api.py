@@ -337,6 +337,22 @@ class Molecule:
                     return False
         return True
 
+    def length_interaction(self, l_limit=0.6, g_limit=3.0):
+        atoms = self.to_positions_array()
+        interaction = {}
+        for ix, i in enumerate(atoms):
+            for jx, j in enumerate(atoms):
+                if ix != jx:
+                    d = np.linalg.norm(i-j)
+                    if l_limit > d:
+                        return np.inf
+                    elif d < g_limit:
+                        a1, a2 = self.atoms[ix+1].name, self.atoms[jx+1].name
+                        if a1 > a2: a1, a2 = a2, a1
+                        if not interaction.get(tuple([a1, a2, d])):
+                            interaction.update({tuple([a1, a2, d]): 0})
+                        interaction[(tuple([a1, a2, d]))] += 1
+        return interaction
 
     def atom_and_bonded_with_it(self):
         '''
