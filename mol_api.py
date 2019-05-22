@@ -286,8 +286,18 @@ class Molecule:
         return heat
 
     def interact_pair(self, distance=1.5, no_less_than=0.5):
-        # TODO
-        pass
+        pairs = {}
+        for key, item in self.notation.bonds.items():
+            for k, i in item.items():
+                if key < k:
+                    a1 = self.atoms[i.c1].name
+                    a2 = self.atoms[i.c2].name
+                    atoms, length = (a1, a2) if a1 < a2 else (a2, a1), i.length
+                    x = tuple([atoms[0], atoms[1], length])
+                    if not pairs.get(x):
+                        pairs.update({x: 0})
+                    pairs[x] += 1
+        return pairs
 
     def compare_with(self, xyz_positions):
         origin = copy.deepcopy(self.to_positions_array())
@@ -316,6 +326,18 @@ class Molecule:
             bs.append({r1, r2})
         return bs
 
+    def check_connectivity(self):
+        return len(self.atoms) == len(dimensional_structure(self.notation.notation, relax=False).keys())
+
+    def check_critical_distance(self, i, critical_r=0.6):
+        compared_position = self.to_positions_array()[i]
+        for num, atom in enumerate(self.to_positions_array()):
+            if num != i:
+                if np.linalg.norm(compared_position - atom) < critical_r:
+                    return False
+        return True
+
+
     def atom_and_bonded_with_it(self):
         '''
         :return: random atom and random index of bonded with it atom
@@ -324,14 +346,13 @@ class Molecule:
         r2 = np.random.choice(list(self.notation.notation[r1].keys()))
         return r1, r2
 
-    def get_child(self, zero=True, change_length=True,
-                  change_section=True, add_or_remove=True, one_time_many=1):
+    def get_child(self, zero=False, change_length=True,
+                  change_section=True, add_or_remove=False, one_time_many=1):
         child = copy.deepcopy(self)
         if zero: #TODO fix zero if it needs...
             bonds_to_change = self.zero_bonds()
         else:
             bonds_to_change = self.choose_bond(n=one_time_many)
-
         if change_section:
             for i, j in bonds_to_change:
                 n_section = np.random.randint(0, len(self.notation.divider.scube))
@@ -349,6 +370,34 @@ class Molecule:
             a1, a2 = np.random.choice(range(len(self.atoms)), 2, replace=False) + np.array([1,1])
             self.add_bond(a1, a2, round(np.random.normal(1.1, 0.3), 2), np.random.randint(len(self.notation.divider.scube)))
         return child
+
+    def random_change(self):
+        def get_child(self, zero=False, change_length=True,
+                      change_section=True, add_or_remove=False, one_time_many=1):
+            child = copy.deepcopy(self)
+            if zero:  # TODO fix zero if it needs...
+                bonds_to_change = self.zero_bonds()
+            else:
+                bonds_to_change = self.choose_bond(n=one_time_many)
+            if change_section:
+                for i, j in bonds_to_change:
+                    n_section = np.random.randint(0, len(self.notation.divider.scube))
+                    na_section = self.notation.divider.anti_scube[n_section]
+                    child.notation.notation[i][j] = n_section
+                    child.notation.notation[j][i] = na_section
+
+            if change_length:  # it has collisions
+                if zero:
+                    pass
+                else:
+                    r1, r2 = self.atom_and_bonded_with_it()
+                    child.notation.bonds[r1][r2].length = child.notation.bonds[r1][r2].length(
+                        -0.1 if np.random.randint(2) else 0.1)
+            if add_or_remove:
+                a1, a2 = np.random.choice(range(len(self.atoms)), 2, replace=False) + np.array([1, 1])
+                self.add_bond(a1, a2, round(np.random.normal(1.1, 0.3), 2),
+                              np.random.randint(len(self.notation.divider.scube)))
+            return child
 
     def mutation(self):
         mutant = copy.deepcopy(self)
@@ -369,224 +418,8 @@ class Molecule:
                           np.random.randint(len(mutant.notation.divider.scube)))
         return mutant
 
-
-def searcher(substrat, product,zero_bonds_only=False,
-             length_change=True, length_path=10):
-    '''
-    :param substrat: type: Molecule,
-    :param product: type: Molecule,
-    :param t_times: allowed rmsd increase
-    :return: path of rmsd
-    '''
-    # c1 = substrat.compare_with(product.to_positions_array())
-    dim_structure = dimensional_structure(substrat.notation, relax=True)
-    c1 = product.compare_with(np.array([i for _, i in dim_structure.items()]))
-    paths = [c1]
-    st = copy.deepcopy(substrat)
-    s_comp = substrat.notation.diff(product.notation)[1]
-    while len(paths) < length_path:
-    # while paths[-1] > 0.25:
-
-        ch = st.get_child(zero=zero_bonds_only, change_length=length_change)
-        ch_dim = dimensional_structure(ch.notation, relax=True)
-        compared = pr.compare_with(np.array([i for _, i in ch_dim.items()]))
-        _, s_comp_c, _ = st.notation.diff(pr.notation)
-        if s_comp_c < s_comp:
-        # if 1-np.random.rand() < c1/compared:
-            paths.append(compared)
-            print('structure is ', ch_dim)
-            del st
-            st = copy.deepcopy(ch)
-    return paths
-
-def real_random_path(reactant, product, n=10000, write=False, file_log='random_search_report'):
-    '''
-    :param reactant, product: Molecule
-    :param n: number of loops
-    :return: show plot of rmsds
-    '''
-    def apply_change():
-        mut.refresh_dimensional()
-        # path.append(reactant.notation.get_heat())
-        msds.append(compare_structers(mut.to_positions_array(), product.to_positions_array()))
-        if write:
-            mut.to_xyz(file_log, mode='a')
-            with open(file_log, 'a') as f_w:
-                f_w.write('################\n')
-    with open(file_log, 'w') as f_w:
-        f_w.write('\n\n\n\n')
-    mut = copy.deepcopy(reactant)
-    d = reactant.notation.diff(product.notation)
-    msd = compare_structers(mut.to_positions_array(), product.to_positions_array())
-    mut_pr = reactant.mutation()
-    mut_pr.refresh_dimensional()
-    d_pr = mut_pr.notation.diff(product.notation)
-    msd_pr = compare_structers(mut_pr.to_positions_array(), product.to_positions_array())
-    msds = [msd]
-    apply_change()
-    print('initial msd', msd, 'd', d)
-    print('rmsd accept probability')
-    for _ in range(n):
-        # if d_pr[1] < d[1] or d_pr[2] < d[2] or np.random.random() < np.exp(-(d_pr[2]/d[2])):
-        if d_pr[1] < d[1] or d_pr[2] < d[2] or msd_pr < msds[0]*1.5:
-            mut, d, msd = copy.deepcopy(mut_pr), d_pr, msd_pr
-            msds.append(msd)
-            apply_change()
-        mut_pr = mut.mutation()
-        mut_pr.refresh_dimensional()
-        d_pr = mut_pr.notation.diff(product.notation)
-        msd_pr = compare_structers(mut_pr.to_positions_array(), product.to_positions_array())
-    print('final msd', msd, 'd', d)
-    if write:
-        f = open(file_log, 'r+')
-        f.seek(0, 0)
-        f.write(str(len(msds)-1)+'\n')
-        f.close()
-    plt.plot(list(range(len(msds))), msds)
-    plt.show()
-
-
-def random_to_the_aim_search(reactant, product, write=False, file_log='reaction_report'): #TODO implement here add of bonds
-    """
-    :return: energies_path and length of sections changes
-    """
-    def apply_change():
-        reactant.refresh_dimensional()
-        # path.append(reactant.notation.get_heat())
-        msds.append(compare_structers(reactant.to_positions_array(), product.to_positions_array()))
-        if write:
-            reactant.to_xyz(file_log, mode='a')
-            with open(file_log, 'a') as f_w:
-                f_w.write('################\n')
-    with open(file_log, 'w') as f_w:
-        f_w.write('153\n')
-    d = reactant.notation.diff(product.notation)
-    # path = [reactant.notation.get_heat()]
-    msds = []
-    apply_change()
-    while d[2] > 0.1 and d[1] != 0:
-        if np.random.random() < 0.5:
-            reactant.notation.s_change_step(product.notation)
-        else:
-            reactant.notation.l_change_step(product.notation)
-        apply_change()
-        d = reactant.notation.diff(product.notation)
-    while reactant.notation.l_change_step(product.notation) != -1:
-        apply_change()
-    while reactant.notation.s_change_step(product.notation) != -1:
-        apply_change()
-    if False and write:
-        f = open(file_log, 'r+')
-        f.seek(0, 0)
-        f.write(str(len(msds))+'\n')
-        f.close()
-
-    # return path, msds
-    return msds
-
-def genetic_to_the_aim(reactant, product, write=False,
-                             file_log='reaction_report'):
-    """
-    :return: energies_path and length of sections changes
-    """
-    def apply_change():
-        mutant.refresh_dimensional()
-        delta = mutant.get_energy() - path[-1]
-        if np.random.random() < np.exp(-delta/20.):
-            path.append(path[-1]+delta)
-            if write:
-                mutant.to_xyz(file_log, title=str(path[-1]), mode='a')
-                with open(file_log, 'a') as f_w:
-                    f_w.write('################\n')
-            return True
-        return False
-
-    d = reactant.notation.diff(product.notation)
-    with open(file_log, 'w') as f_w:
-        f_w.write(str(len(d))+'\n')
-    path = [reactant.get_energy()]
-    # msds = []
-    # apply_change()
-    while d[2] > 0.1 and d[1] != 0:
-        mutant = copy.deepcopy(reactant)
-        if np.random.random() < 0.5:
-            mutant.notation.s_change_step(product.notation)
-        else:
-            mutant.notation.l_change_step(product.notation)
-        if apply_change(): reactant = copy.deepcopy(mutant)
-        d = reactant.notation.diff(product.notation)
-    while reactant.notation.l_change_step(product.notation) != -1:
-        mutant = copy.deepcopy(reactant)
-        if apply_change(): reactant = copy.deepcopy(mutant)
-    while reactant.notation.s_change_step(product.notation) != -1:
-        mutant = copy.deepcopy(reactant)
-        if apply_change(): reactant = copy.deepcopy(mutant)
-    return path #, msds
-    # return msds
-
-    #########two halves of random path#########
-    # s = reactant.notation.s_change(product.notation, follow_energy=True, sh=True)
-    # l = reactant.notation.l_change(product.notation, follow_energy=True, sh=True)
-    # return s+l, len(s)
-    ###########################################
-
-
-
 if __name__ == '__main__':
-    n = 15
-    # reaction = 'mopac_example' # '3a->4' #
-    reaction = '3a->4' #
-    # reaction = 'vanadii'
-    if reaction == '3a->4':
-        ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n)
-        pr = Molecule('./prepared_mols2/4_opted.mol2', n=n)
-        pr.refresh_dimensional()
-    elif reaction == 'vanadii':
-        ln = Molecule('./vanadii/3a_singlet_opted.mol2', n=n)
-        pr = Molecule('./vanadii/ts_3a_4a_opted.mol2', n=n)
-        pr.refresh_dimensional()
-    else:
-        ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
-        pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
-        pr.refresh_dimensional()
-    # ll = ln.to_positions_array()
-    # pp = pr.to_positions_array()
-    # import rmsd
-    # ll -= rmsd.centroid(ll)
-    # pp -= rmsd.centroid(pp)
-    # rotate = rmsd.kabsch(pp, ll)
-    # pp = np.dot(pp, rotate)
-    # ln.set_dimensional(ll)
-    # pr.set_dimensional(pp)
-    # ln.to_mol2('./vanadii/3a_singlet_rot.mol2')
-    # pr.to_mol2('./vanadii/ts_3a_4_rot.mol2')
-    # compare_structers()
-    # print(ln.notation.get())
-    maxs = []
-    for i in range(50, 81):
-        ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n)
-        pr = Molecule('./prepared_mols2/4_opted.mol2', n=n)
-        pr.refresh_dimensional()
-        ms = genetic_to_the_aim(ln, pr, write=True, file_log=reaction+'_gen_report_20_'+str(i))
-        # print(ms, )
-        maxs.append(max(ms))
-    print(maxs)
-    # print(ln.notation.get_energy())
-    # print(pr.notation.get_energy())
-    # real_random_path(ln, pr, n=10000, write=True, file_log=reaction+'_random_report')
-    # print(max(p))
-    # print(p)
-    # print(max(ms))
-    # print(ms)
-    # print(pr.compare_with(np.array([i for _, i in dimensional_structure(pr.notation).items()])))
-    # name_heat = reaction + 'start.xyz'
-    # pr.to_xyz(name_heat)
-    # print('before', get_heat_of_xyz(name_heat))
-    # pr.refresh_dimensional()
-    # name_heat = reaction+'start.xyz'
-    # pr.to_xyz(name_heat)
-    # print(ln.notation.l_change(pr.notation, follow_energy=True))
-    # print(ln.notation.s_change(pr.notation, follow_energy=True))
-
-
-    # write_mol2_file('My_' + name + '_' + 'q0.mol2', atoms_info, dim_structure, bonds=paired)
+    n = 2
+    ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n)
+    print(ln.interact_pair())
+    # pr = Molecule('./prepared_mols2/4_opted.mol2', n=n)
