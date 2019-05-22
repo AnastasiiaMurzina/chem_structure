@@ -187,7 +187,7 @@ class Equation_system:
         return len(self.energy) > len(self.variables)
 
     def can_i_solve_it(self, variables):
-        return len(variables - self.variables) == 0
+        return len(variables.keys() - self.variables) == 0
 
     def to_matrix(self):
         x = np.zeros((len(self.energy), len(self.variables)))
@@ -196,22 +196,34 @@ class Equation_system:
             order_of_vars.append(var)
             for ix, i in enumerate(self.equations):
                 x[ix][ix_e] = i.get(var, 0)
-        return x.T, np.array(self.energy), order_of_vars
+        return x, np.array(self.energy), order_of_vars
 
     def solve(self):
         system, ens, order = self.to_matrix()
+        print(system, ens)
         try:
+            print('solution', np.linalg.lstsq(system, ens))
             return {i: j for i, j in zip(order, np.linalg.lstsq(system, ens))}
         except np.linalg.LinAlgError:
             return -1
 
+def apply_solution(solution: dict, interacted: dict):
+    print(solution)
+    print(len(solution))
+    en = 0
+    for key, item in interacted.items():
+        en += solution[1][key]*item
+    return en
 
-def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file_log='multi_report'):
+
+
+def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file_log='multi_report', limits=2):
     temp_dir = mkdtemp()
 
     def apply_change():
         mut = copy.deepcopy(mut_pr)
         mut.refresh_dimensional()
+
         distance.append(msd_pr)
         difference.append(difference_pr)
         energies.append(energy_pr)
@@ -234,27 +246,37 @@ def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file
     print('initial differnce', difference[0])
 
     for _ in range(n):
-        mut_pr = mut.mutation()
+        mut_pr = mut.mutation(probailities=[0.5, 1, 1])
         mut_pr.refresh_dimensional()
 
         difference_pr = mut_pr.notation.diff(to_mol.notation) # d[1] - diff_of_sections, d[2] - summ diff of lengths
         msd_pr = compare_structers(mut_pr.to_positions_array(), to_mol.to_positions_array())
         vars_linear_approx = mut_pr.interact_pair()
-        if np.random.random() < np.exp(-len(solver.variables)/len(solver.equations))\
-                and solver.check_system() and solver.can_i_solve_it(vars_linear_approx):
-            print('could')
-            print(solver.solve())
-            energy_pr = np.inf
-        else:
-            energy_pr = mut_pr.get_energy(tmp=temp_dir)
-            print(mut_pr.interact_pair())
-            solver.push(mut_pr.interact_pair(), energy_pr)
-        if difference[-1] < difference_pr or distance[-1] < msd_pr\
-                or np.random.random() < np.exp(-energy_pr/energies[-1]):
+        # if np.random.random() < np.exp(-len(solver.variables)/len(solver.equations))\
+        #         and solver.check_system() and solver.can_i_solve_it(vars_linear_approx):
+        #     print('could')
+        #     ss = solver.solve()
+        #     if ss == -1:
+        #         energy_pr = None
+        #     else:
+        #         energy_pr = apply_solution(ss, vars_linear_approx)
+        # else:
+        energy_pr = mut_pr.get_energy(tmp=temp_dir)
+        if energy_pr is None:
+            continue
+        # solver.push(mut_pr.interact_pair(), energy_pr)
+        # if difference[-1] < difference_pr or distance[-1] < msd_pr\
+        #         or np.random.random() < np.exp(-(energy_pr/energies[-1])**2):
+        if difference[-1] < difference_pr or distance[-1] < msd_pr \
+                and energy_pr < -4680.:
             apply_change()
             print('rmsd accept', msd_pr)
             print('difference accept', difference_pr)
             print('energy accept', energy_pr)
+
+    print(difference)
+    print(distance)
+    print(energies)
 
 
 if __name__ == '__main__':
@@ -274,8 +296,8 @@ if __name__ == '__main__':
     #     ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
     #     pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
     #     pr.refresh_dimensional()
-    lstl_solver = Equation_system(ln.interact_pair(), -4700)
-    multi_criterical(ln, pr, n=10)
+    lstl_solver = Equation_system(ln.interact_pair(), ln.get_energy())
+    multi_criterical(ln, pr, n=1000)
 
     # ln.notation.s_change_step()
     # maxs = []

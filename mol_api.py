@@ -399,17 +399,21 @@ class Molecule:
                               np.random.randint(len(self.notation.divider.scube)))
             return child
 
-    def mutation(self):
+    def mutation(self, probailities=[0.4, 0.8, 1]):
+        '''
+        :param probailities: less [0] is p_section_change, [1] is p_length_change, [2] is bond_change
+        :return:
+        '''
         mutant = copy.deepcopy(self)
         a1, a2 = self.atom_and_bonded_with_it()
         choi = np.random.random()
-        if choi < 0.4:
+        if choi < probailities[0]:
             n_section = np.random.randint(0, len(self.notation.divider.scube))
             while not self.check_c1_section_is_free(self.notation.notation[a1], n_section):
                 n_section = np.random.randint(0, len(self.notation.divider.scube))
             mutant.notation.notation[a1][a2] = n_section
             mutant.notation.notation[a2][a1] = self.notation.divider.anti_scube[n_section]
-        elif choi < 0.8:
+        elif choi < probailities[1]:
             dl = np.random.normal(0, 0.5, 1)[0]
             mutant.notation.bonds[a1][a2].set_length(mutant.notation.bonds[a1][a2].length + round(dl, 1))
         else:
