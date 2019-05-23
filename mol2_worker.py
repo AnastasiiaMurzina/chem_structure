@@ -129,14 +129,16 @@ def compare_structers(mol1, mol2):
     mol2 = np.dot(mol2, rotate)
     return rmsd.rmsd(mol1, mol2)
 
-def xyz_to_array(file_name):
+def xyz_to_array(file_name, names=False):
     with open(file_name, 'r') as f:
         n = int(f.readline())
         f.readline()
-        lines = []
+        lines, namesl = [], []
         for _ in range(n):
-            lines.append(np.array([float(i) for i in f.readline().split()[1::]]))
-    return np.array(lines)
+            l = f.readline().split()
+            lines.append(np.array([float(i) for i in l[1::]]))
+            namesl.append(l[0])
+    return np.array(lines), namesl if names else np.array(lines)
 
 def bonds_to_dict(bonds):
     '''

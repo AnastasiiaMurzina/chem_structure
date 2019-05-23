@@ -173,10 +173,32 @@ def genetic_to_the_aim(reactant, product, write=False,
 
 
 class Equation_system:
-    def __init__(self, first_linear, energy):
+    def __init__(self, first_linear={}, energy=0):
         self.equations = [first_linear]
         self.variables = set(first_linear.keys())
         self.energy = [energy]
+
+    def from_file(self, file):
+        with open(file, 'r') as f:
+            n_eq = f.readline()
+            bonds = [i.split(',') for i in f.readline().split()]
+            self.variables = set([])
+            for bond in bonds:
+                self.variables.update(tuple([bond[0], bond[1], float(bond[2])]))
+            koeffs = f.readline().split()
+            self.equations = []
+            for k in koeffs:
+                self.equations.append([{}])
+
+
+    def to_file(self, file, mode='w'):
+        with open(file, mode=mode) as f:
+            f.write(str(len(self.energy))+'\n')
+            koeffs, ens, bonds = self.to_matrix()
+            for bond in bonds:
+                f.write(bond[0]+','+bond[1]+','+str(bond[2])+'\t')
+            for k, e in zip(koeffs, ens):
+                f.write(' '.join(k)+' '+str(e)+'\n')
 
     def push(self, linear, energy):
         self.equations.append(linear)
@@ -200,25 +222,24 @@ class Equation_system:
 
     def solve(self):
         system, ens, order = self.to_matrix()
-        print(system, ens)
         try:
-            print('solution', np.linalg.lstsq(system, ens))
-            return {i: j for i, j in zip(order, np.linalg.lstsq(system, ens))}
+            return {i: j for i, j in zip(order, np.linalg.lstsq(system, ens, rcond=None)[0])}
         except np.linalg.LinAlgError:
             return -1
 
+
 def apply_solution(solution: dict, interacted: dict):
-    print(solution)
-    print(len(solution))
     en = 0
     for key, item in interacted.items():
-        en += solution[1][key]*item
+        en += solution[key]*item
     return en
 
 
-
-def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file_log='multi_report', limits=2):
+def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file_log='multi_report'):
     temp_dir = mkdtemp()
+    comparator = []
+    mopac_c = []
+    n_info = []
 
     def apply_change():
         mut = copy.deepcopy(mut_pr)
@@ -254,18 +275,19 @@ def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file
         vars_linear_approx = mut_pr.interact_pair()
         if np.random.random() < np.exp(-len(solver.variables)/len(solver.equations))\
                 and solver.check_system() and solver.can_i_solve_it(vars_linear_approx):
-            print('could')
             ss = solver.solve()
             if ss == -1:
                 energy_pr = None
             else:
                 energy_pr = apply_solution(ss, vars_linear_approx)
-                print('good')
+                comparator.append(energy_pr)
+                mopac_c.append(mut_pr.get_energy())
+                n_info.append(len(solver.energy))
         else:
             energy_pr = mut_pr.get_energy(tmp=temp_dir)
         if energy_pr is None:
             continue
-        solver.push(mut_pr.interact_pair(), energy_pr)
+        solver.push(mut_pr.length_interaction(), energy_pr)
         if difference[-1] < difference_pr or distance[-1] < msd_pr\
                 or np.random.random() < np.exp(-(energy_pr/energies[-1])**2):
         # if difference[-1] < difference_pr or distance[-1] < msd_pr \
@@ -279,9 +301,25 @@ def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file
     print(distance)
     print(energies)
 
+    print('comparator', comparator)
+    print('mopac_c', mopac_c)
+    print('nn', n_info)
+
+def read_report(report_name):
+    with open(report_name, 'r') as f:
+        n = int(f.readline())
+        k = int(f.readline())
+        ens = [float(f.readline())]
+
+        for _ in range(n-1):
+            for _ in range(k+2):
+                f.readline()
+            ens.append(float(f.readline()))
+    return ens
+
 
 if __name__ == '__main__':
-    n = 10
+    n = 18
     # reaction = 'mopac_example' # '3a->4' #
     reaction = '3a->4' #
     # reaction = 'vanadii'
@@ -289,6 +327,7 @@ if __name__ == '__main__':
         ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n)
         pr = Molecule('./prepared_mols2/4_opted.mol2', n=n)
         pr.refresh_dimensional()
+
     # elif reaction == 'vanadii':
     #     ln = Molecule('./vanadii/3a_singlet_opted.mol2', n=n)
     #     pr = Molecule('./vanadii/ts_3a_4a_opted.mol2', n=n)
@@ -297,20 +336,23 @@ if __name__ == '__main__':
     #     ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
     #     pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
     #     pr.refresh_dimensional()
-    lstl_solver = Equation_system(ln.interact_pair(), ln.get_energy())
-    multi_criterical(ln, pr, n=1000)
+    # lstl_solver = Equation_system(ln.interact_pair(), ln.get_energy())
+    # multi_criterical(ln, pr, n=1000)
 
-    # ln.notation.s_change_step()
-    # maxs = []
-    # for i in range(5):
-    #     ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n)
-    #     pr = Molecule('./prepared_mols2/4_opted.mol2', n=n)
-    #     pr.refresh_dimensional()
-    #     ms = genetic_to_the_aim(ln, pr, write=True, file_log=reaction+'_gen_report_s20_'+str(i))
-    #     # print(ms, )
-    #     maxs.append(max(ms))
-    # print(maxs)
-    # print(min(maxs))
+
+    # print(read_report('3a->4_to_the_aim_report_sd18_37'))
+    maxs = []
+    for i in range(50, 75):
+        ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n)
+        pr = Molecule('./prepared_mols2/4_opted.mol2', n=n)
+        pr.refresh_dimensional()
+        ms = genetic_to_the_aim(ln, pr, write=True, file_log=reaction+'_to_the_aim_report_sd18_'+str(i))
+#
+#         # [-4670.42293, -4652.17042, -4651.42057, -4670.2851, -4634.28999, -4639.88718, -4664.15278, -4636.34603, -4669.5794, -4664.79984, -4672.00149, -4645.9287, -4671.03974, -4628.04646, -4655.98681, -4643.14863, -4665.50946, -4637.22611, -4662.35222, -4662.25727, -4653.60553, -4639.29279, -4650.51107, -4648.95518, -4664.80984, -4651.20882, -4639.90053, -4664.7966, -4659.71421, -4648.4874, -4672.32384, -4667.39659, -4629.87114, -4662.09317, -4656.08972, -4651.39208, -4659.6832, -4677.20861, -4640.2952, -4659.6825, -4664.57144, -4663.13936, -4652.45947, -4658.74559, -4639.98762, -4663.22053, -4647.45095, -4664.91409, -4666.24898, -4658.26272]
+# # -4677.20861
+        maxs.append(max(ms))
+    print(maxs)
+    print(min(maxs))
 
     # print(ln.notation.get_energy())
     # print(pr.notation.get_energy())

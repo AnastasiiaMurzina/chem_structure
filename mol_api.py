@@ -159,12 +159,15 @@ class Notation:
             return 0
         return -1
 
-    def l_change_step(self, to_the_notation):
+    def l_change_step(self, to_the_notation, little=True):
         l_d = self.l_diff(to_the_notation)
         if l_d != []:
             indx = np.random.randint(len(l_d))
             k_1, inx, j = l_d[indx]
-            self.bonds[k_1][inx].set_length(j)
+            if little:
+                self.bonds[k_1][inx] += -0.1 if j < self.bonds[k_1][inx] else 0.1
+            else:
+                self.bonds[k_1][inx].set_length(j)
             return 0
         return -1
 

@@ -7,9 +7,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import rmsd
 
-def get_linear_path_energies(reactant, product, n=10):
-    vbegin = [np.array(f[1::]) for f in reactant]
-    vend = [np.array(f[1::]) for f in product]
+def get_linear_path_energies(reactant, names, product, n=10):
+    vbegin = [np.array(f) for f in reactant]
+    vend = [np.array(f) for f in product]
     vector_to_product = [f - t for f, t in zip(vend, vbegin)]
     mols = len(vbegin)
     x, y = list(range(n+1)), []
@@ -20,7 +20,7 @@ def get_linear_path_energies(reactant, product, n=10):
         with open(tmp_file, 'w') as f:
             f.write(str(mols) + '\n\n')
             for inx in range(mols):
-                f.write('{}\t{}\t{}\t{}\n'.format(reactant[inx][0], *current_state[inx]))
+                f.write('{}\t{}\t{}\t{}\n'.format(names[inx], *current_state[inx]))
         y.append(get_energy_of_xyz(tmp_file, tmpdir=tmp))
     shutil.rmtree(tmp)
     return x, y
