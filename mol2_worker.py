@@ -138,7 +138,7 @@ def xyz_to_array(file_name, names=False):
             l = f.readline().split()
             lines.append(np.array([float(i) for i in l[1::]]))
             namesl.append(l[0])
-    return np.array(lines), namesl if names else np.array(lines)
+    return (np.array(lines), namesl) if names else np.array(lines)
 
 def bonds_to_dict(bonds):
     '''

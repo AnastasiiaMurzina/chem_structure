@@ -165,7 +165,7 @@ class Notation:
             indx = np.random.randint(len(l_d))
             k_1, inx, j = l_d[indx]
             if little:
-                self.bonds[k_1][inx] += -0.1 if j < self.bonds[k_1][inx] else 0.1
+                self.bonds[k_1][inx].length += 0.1 if j < self.bonds[k_1][inx].length else -0.1
             else:
                 self.bonds[k_1][inx].set_length(j)
             return 0
