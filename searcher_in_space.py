@@ -1,11 +1,12 @@
-import matplotlib.pyplot as plt
 import copy
-import numpy as np
 from tempfile import mkdtemp
-from shutil import rmtree
 
-from mol_api import Molecule, compare_structers
+import matplotlib.pyplot as plt
+import numpy as np
+
 from layouter import dimensional_structure
+from mol_api import Molecule, compare_structers
+from quadro_with_rotate_class import Spherical_divider
 
 
 def searcher(substrat, product, zero_bonds_only=False,
@@ -122,6 +123,7 @@ def random_to_the_aim_search(reactant, product, write=False, file_log='reaction_
     # return path, msds
     return msds
 
+
 def genetic_to_the_aim(reactant, product, write=False,
                              file_log='reaction_report'):
     """
@@ -133,8 +135,9 @@ def genetic_to_the_aim(reactant, product, write=False,
         if en is None:
             return False
         delta = en - path[-1]
-        if np.random.random() < np.exp(-delta/10.):
+        if np.random.random() < np.exp(-delta):
             path.append(path[-1]+delta)
+            # print('difference accept', mutant.notation.l_diff(product.notation))
             if write:
                 mutant.to_xyz(file_log, title=str(path[-1]), mode='a')
                 with open(file_log, 'a') as f_w:
@@ -143,6 +146,7 @@ def genetic_to_the_aim(reactant, product, write=False,
         return False
 
     with open(file_log, 'w') as f_w:
+        # it need write another one num of steps !!!
         f_w.write(str(len(reactant.notation.s_diff(product.notation))
                       +len(reactant.notation.l_diff(product.notation)))+'\n')
     d = reactant.notation.diff(product.notation)
@@ -157,12 +161,12 @@ def genetic_to_the_aim(reactant, product, write=False,
             mutant.notation.l_change_step(product.notation)
         if apply_change(): reactant = copy.deepcopy(mutant)
         d = reactant.notation.diff(product.notation)
-    while reactant.notation.l_change_step(product.notation) != -1:
-        mutant = copy.deepcopy(reactant)
+    while mutant.notation.l_change_step(product.notation) != -1:
         if apply_change(): reactant = copy.deepcopy(mutant)
-    while reactant.notation.s_change_step(product.notation) != -1:
         mutant = copy.deepcopy(reactant)
+    while mutant.notation.s_change_step(product.notation) != -1:
         if apply_change(): reactant = copy.deepcopy(mutant)
+        mutant = copy.deepcopy(reactant)
     return path #, msds
 
     #########two halves of random path#########
@@ -173,32 +177,54 @@ def genetic_to_the_aim(reactant, product, write=False,
 
 
 class Equation_system:
-    def __init__(self, first_linear={}, energy=0):
-        self.equations = [first_linear]
-        self.variables = set(first_linear.keys())
-        self.energy = [energy]
+    def __init__(self, first_linear=None, energy=None):
+        if first_linear is None:
+            first_linear = {}
+            self.equations = []
+            self.variables = set([])
+        else:
+            self.equations = [first_linear]
+            self.variables = set(first_linear.keys())
+        if energy is None:
+            self.energy = []
+        else:
+            self.energy = [energy]
+
+    def to_matrix(self):
+        # TODO add stack one one to get bias
+        x = np.zeros((len(self.energy), len(self.variables)))
+        order_of_vars = []
+        for ix_e, var in enumerate(self.variables):
+            order_of_vars.append(var)
+            for ix, i in enumerate(self.equations):
+                x[ix][ix_e] = i.get(var, 0)
+        return x, np.array(self.energy), order_of_vars
 
     def from_file(self, file):
         with open(file, 'r') as f:
-            n_eq = f.readline()
+            n_eq = int(f.readline())
+            n_var = int(f.readline())
             bonds = [i.split(',') for i in f.readline().split()]
-            self.variables = set([])
+            self.variables = set({})
             for bond in bonds:
-                self.variables.update(tuple([bond[0], bond[1], float(bond[2])]))
-            koeffs = f.readline().split()
-            self.equations = []
-            for k in koeffs:
-                self.equations.append([{}])
+                self.variables.add(tuple([bond[0], bond[1], float(bond[2])]))
+            for i in range(n_eq):
+                koeffs = f.readline().split()
+
+                self.energy.append(float(koeffs.pop(0)))
+                self.equations.append(list(map(int, koeffs)))
 
 
     def to_file(self, file, mode='w'):
         with open(file, mode=mode) as f:
             f.write(str(len(self.energy))+'\n')
             koeffs, ens, bonds = self.to_matrix()
+            f.write(str(len(koeffs[0]))+'\n')
             for bond in bonds:
-                f.write(bond[0]+','+bond[1]+','+str(bond[2])+'\t')
+                f.write('{},{},{:.1f}\t'.format(*bond))
+            f.write('\n')
             for k, e in zip(koeffs, ens):
-                f.write(' '.join(k)+' '+str(e)+'\n')
+                f.write(str(e)+' '+' '.join(list(map(lambda x: str(int(x)), k)))+'\n')
 
     def push(self, linear, energy):
         self.equations.append(linear)
@@ -211,14 +237,6 @@ class Equation_system:
     def can_i_solve_it(self, variables):
         return len(variables.keys() - self.variables) == 0
 
-    def to_matrix(self):
-        x = np.zeros((len(self.energy), len(self.variables)))
-        order_of_vars = []
-        for ix_e, var in enumerate(self.variables):
-            order_of_vars.append(var)
-            for ix, i in enumerate(self.equations):
-                x[ix][ix_e] = i.get(var, 0)
-        return x, np.array(self.energy), order_of_vars
 
     def solve(self):
         system, ens, order = self.to_matrix()
@@ -237,9 +255,7 @@ def apply_solution(solution: dict, interacted: dict):
 
 def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file_log='multi_report'):
     temp_dir = mkdtemp()
-    comparator = []
-    mopac_c = []
-    n_info = []
+    comparator, mopac_c, n_info = [], [], []
 
     def apply_change():
         mut = copy.deepcopy(mut_pr)
@@ -273,9 +289,11 @@ def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file
         difference_pr = mut_pr.notation.diff(to_mol.notation) # d[1] - diff_of_sections, d[2] - summ diff of lengths
         msd_pr = compare_structers(mut_pr.to_positions_array(), to_mol.to_positions_array())
         vars_linear_approx = mut_pr.interact_pair()
-        if np.random.random() < np.exp(-len(solver.variables)/len(solver.equations))\
-                and solver.check_system() and solver.can_i_solve_it(vars_linear_approx):
+        # if np.random.random() < np.exp(-len(solver.variables)/len(solver.equations))\
+        #         and solver.check_system() and solver.can_i_solve_it(vars_linear_approx):
+        if solver.check_system() and solver.can_i_solve_it(vars_linear_approx):
             ss = solver.solve()
+            print('could')
             if ss == -1:
                 energy_pr = None
             else:
@@ -287,19 +305,21 @@ def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file
             energy_pr = mut_pr.get_energy(tmp=temp_dir)
         if energy_pr is None:
             continue
-        solver.push(mut_pr.length_interaction(), energy_pr)
-        if difference[-1] < difference_pr or distance[-1] < msd_pr\
-                or np.random.random() < np.exp(-(energy_pr/energies[-1])**2):
-        # if difference[-1] < difference_pr or distance[-1] < msd_pr \
-        #         and energy_pr < -4680.:
-            apply_change()
-            print('rmsd accept', msd_pr)
-            print('difference accept', difference_pr)
-            print('energy accept', energy_pr)
+        interaction = mut_pr.length_interaction()
+        if isinstance(interaction, dict):
+            solver.push(interaction, energy_pr)
+            if difference[-1] < difference_pr or distance[-1] < msd_pr\
+                    or np.random.random() < np.exp(-(energy_pr/energies[-1])**2):
+            # if difference[-1] < difference_pr or distance[-1] < msd_pr \
+            #         and energy_pr < -4680.:
+                apply_change()
+                print('rmsd accept', msd_pr)
+                print('difference accept', difference_pr)
+                print('energy accept', energy_pr)
 
-    print(difference)
-    print(distance)
-    print(energies)
+    # print(difference)
+    # print(distance)
+    # print(energies)
 
     print('comparator', comparator)
     print('mopac_c', mopac_c)
@@ -319,40 +339,69 @@ def read_report(report_name):
 
 
 if __name__ == '__main__':
-    n = 18
-    # reaction = 'mopac_example' # '3a->4' #
-    reaction = '3a->4' #
-    # reaction = 'vanadii'
-    if reaction == '3a->4':
-        ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n)
-        pr = Molecule('./prepared_mols2/4_opted.mol2', n=n)
-        pr.refresh_dimensional()
+    def calc_to_the_aim_path():
+        n = 20
+        divider = Spherical_divider(n=n)
+        # reaction = 'mopac_example' # '3a->4' #
+        reaction = '3a->4' #
+        # reaction = 'vanadii'
+        if reaction == '3a->4':
+            ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n, divider=divider)
+            pr = Molecule('./prepared_mols2/4_opted.mol2', n=n, divider=divider)
+            pr.refresh_dimensional()
 
-    # elif reaction == 'vanadii':
-    #     ln = Molecule('./vanadii/3a_singlet_opted.mol2', n=n)
-    #     pr = Molecule('./vanadii/ts_3a_4a_opted.mol2', n=n)
-    #     pr.refresh_dimensional()
-    # else:
-    #     ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
-    #     pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
-    #     pr.refresh_dimensional()
-    # lstl_solver = Equation_system(ln.interact_pair(), ln.get_energy())
-    # multi_criterical(ln, pr, n=1000)
+        # elif reaction == 'vanadii':
+        #     ln = Molecule('./vanadii/3a_singlet_opted.mol2', n=n)
+        #     pr = Molecule('./vanadii/ts_3a_4a_opted.mol2', n=n)
+        #     pr.refresh_dimensional()
+        else:
+            ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
+            pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
+            pr.refresh_dimensional()
+
+        kk = 114
+        ms = genetic_to_the_aim(ln, pr, write=True, file_log=reaction + '_to_the_aim_report_lslittle_'+str(kk))
+        print(kk, max(ms))
+
+    def keep_equations():
+        n = 10
+        ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
+        lstl_solver = Equation_system(ln.interact_pair(), ln.get_energy())
+        for _ in range(10):
+            ln = ln.mutation([0.5, 1])
+            ln.refresh_dimensional()
+            lstl_solver.push(ln.interact_pair(), ln.get_energy())
+        lstl_solver.to_file('equations')
+        # multi_criterical(ln, pr, n=5000)
+
+    # keep_equations()
+    def read_eqs():
+        # n = 10
+        # ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
+        lstl_solver = Equation_system()
+        lstl_solver.from_file('equations')
+        print(lstl_solver.equations)
+        print(lstl_solver.variables)
+        print(lstl_solver.energy)
+
+
+    read_eqs()
 
 
     # print(read_report('3a->4_to_the_aim_report_sd18_37'))
-    maxs = []
-    for i in range(50, 75):
-        ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n)
-        pr = Molecule('./prepared_mols2/4_opted.mol2', n=n)
-        pr.refresh_dimensional()
-        ms = genetic_to_the_aim(ln, pr, write=True, file_log=reaction+'_to_the_aim_report_sd18_'+str(i))
+    # maxs = []
+    # for i in range(3, 4):
+        # ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n)
+        # pr = Molecule('./prepared_mols2/4_opted.mol2', n=n)
+        # pr.refresh_dimensional()
+        # ms = genetic_to_the_aim(ln, pr, write=True, file_log=reaction+'_to_the_aim_report_llittle_'+str(i))
 #
 #         # [-4670.42293, -4652.17042, -4651.42057, -4670.2851, -4634.28999, -4639.88718, -4664.15278, -4636.34603, -4669.5794, -4664.79984, -4672.00149, -4645.9287, -4671.03974, -4628.04646, -4655.98681, -4643.14863, -4665.50946, -4637.22611, -4662.35222, -4662.25727, -4653.60553, -4639.29279, -4650.51107, -4648.95518, -4664.80984, -4651.20882, -4639.90053, -4664.7966, -4659.71421, -4648.4874, -4672.32384, -4667.39659, -4629.87114, -4662.09317, -4656.08972, -4651.39208, -4659.6832, -4677.20861, -4640.2952, -4659.6825, -4664.57144, -4663.13936, -4652.45947, -4658.74559, -4639.98762, -4663.22053, -4647.45095, -4664.91409, -4666.24898, -4658.26272]
 # # -4677.20861
-        maxs.append(max(ms))
-    print(maxs)
-    print(min(maxs))
+#         maxs.append(max(ms))
+#     print(ms)
+#     print(maxs)
+#     print(min(maxs))
 
     # print(ln.notation.get_energy())
     # print(pr.notation.get_energy())
