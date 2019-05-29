@@ -1,5 +1,6 @@
 import numpy as np
 from numpy import arctan2
+from itertools import combinations
 
 
 def cartesian_to_spherical(vector):
@@ -46,9 +47,30 @@ class Spherical_divider():
         if get_error: return ix, d
         return ix
 
+    def nearest_from_to(self, s1, s2):
+        v1 = -self.scube[s1] # Warning: with "-"
+        v2 = -self.scube[s2]
+        dv = v2-v1
+        k = self.n**2
+        for i in range(k):
+            current = v1+i*dv/k
+            current = current/np.linalg.norm(current)
+            fs = self.find_section(current)
+            if fs != s1:
+                return fs
+
 
     def set_anti_scube(self):
         self.anti_scube = {}
         for i, j in enumerate(self.scube):
             self.anti_scube.update({i: self.find_section(j)})
+
+if __name__ == '__main__':
+    n = 3
+    s = Spherical_divider(n)
+    ss = s.nearest_from_to(0, 9)
+    # k = len(s)
+    # d = [np.linalg.norm(s1-s2) for s1, s2 in (combinations(s, 2))]
+    # print(min(d))
+    # print(len(np.where(d == min(d))[0]))
 
