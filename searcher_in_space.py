@@ -28,7 +28,7 @@ def searcher(substrat, product, zero_bonds_only=False,
 
         ch = st.get_child(zero=zero_bonds_only, change_length=length_change)
         ch_dim = dimensional_structure(ch.notation, relax=True)
-        compared = pr.compare_with(np.array([i for _, i in ch_dim.items()]))
+        compared = product.compare_with(np.array([i for _, i in ch_dim.items()]))
         _, s_comp_c, _ = st.notation.diff(pr.notation)
         if s_comp_c < s_comp:
         # if 1-np.random.rand() < c1/compared:
@@ -179,7 +179,6 @@ def genetic_to_the_aim(reactant, product, write=False,
 class Equation_system:
     def __init__(self, first_linear=None, energy=None):
         if first_linear is None:
-            first_linear = {}
             self.equations = []
             self.variables = set([])
         else:
@@ -210,9 +209,9 @@ class Equation_system:
                 self.variables.add(tuple([bond[0], bond[1], float(bond[2])]))
             for i in range(n_eq):
                 koeffs = f.readline().split()
-
                 self.energy.append(float(koeffs.pop(0)))
-                self.equations.append(list(map(int, koeffs)))
+                eq = {i: j for i, j in zip(self.variables, list(map(int, koeffs)))}
+                self.equations.append(eq)
 
 
     def to_file(self, file, mode='w'):
@@ -367,25 +366,36 @@ if __name__ == '__main__':
         n = 10
         ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
         lstl_solver = Equation_system(ln.interact_pair(), ln.get_energy())
-        for _ in range(10):
+        for _ in range(50):
             ln = ln.mutation([0.5, 1])
             ln.refresh_dimensional()
-            lstl_solver.push(ln.interact_pair(), ln.get_energy())
+            en = ln.get_energy()
+            if en is None:
+                continue
+            lstl_solver.push(ln.interact_pair(), en)
         lstl_solver.to_file('equations')
         # multi_criterical(ln, pr, n=5000)
 
+
+
     # keep_equations()
     def read_eqs():
-        # n = 10
-        # ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
+        n = 10
+        ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
         lstl_solver = Equation_system()
         lstl_solver.from_file('equations')
         print(lstl_solver.equations)
-        print(lstl_solver.variables)
-        print(lstl_solver.energy)
-
-
+        ss = lstl_solver.solve()
+        mops = []
+        appr = []
+        for _ in range(20):
+            ln = ln.mutation([0.5, 1])
+            mops.append(ln.get_energy())
+            appr.append(apply_solution(ss, ln.interact_pair()))
+        print(mops)
+        print(appr)
     read_eqs()
+
 
 
     # print(read_report('3a->4_to_the_aim_report_sd18_37'))
