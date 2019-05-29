@@ -51,7 +51,7 @@ class Spherical_divider():
         v1 = -self.scube[s1] # Warning: with "-"
         v2 = -self.scube[s2]
         dv = v2-v1
-        k = self.n**2
+        k = self.n
         for i in range(k):
             current = v1+i*dv/k
             current = current/np.linalg.norm(current)
