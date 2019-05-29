@@ -10,8 +10,8 @@ from quadro_with_rotate_class import Spherical_divider
 
 
 class Notation:
-    def __init__(self, n, info_from_file):
-        self.divider = Spherical_divider(n=n)
+    def __init__(self, n, info_from_file, divider=None):
+        self.divider = Spherical_divider(n=n) if divider is None else divider
         bonds, self.atoms = info_from_file
         self.notation = {}
         self.bonds = bonds_to_dict(bonds)
@@ -148,11 +148,13 @@ class Notation:
             rmtree(tmp)
             return (ens, s_d) if keep_change else ens
 
-    def s_change_step(self, to_the_notation):
+    def s_change_step(self, to_the_notation, little=True):
         s_d = self.s_diff(to_the_notation)
         if s_d != []:
             indx = np.random.randint(len(s_d))
             k_1, inx, j = s_d[indx]
+            if little:
+                j = self.divider.nearest_from_to(self.bonds[k_1][inx].section, j)
             self.notation[k_1][inx] = j
             self.bonds[k_1][inx].set_section(j)
             self.bonds[inx][k_1].set_section(self.divider.anti_scube[j])
@@ -165,9 +167,13 @@ class Notation:
             indx = np.random.randint(len(l_d))
             k_1, inx, j = l_d[indx]
             if little:
-                self.bonds[k_1][inx].length += 0.1 if j < self.bonds[k_1][inx].length else -0.1
+                current_l = self.bonds[k_1][inx].length
+                step = round((current_l - 0.1) if j < current_l else (current_l+0.1), 1)
+                self.bonds[k_1][inx].set_length(step)
+                self.bonds[inx][k_1].set_length(step)
             else:
                 self.bonds[k_1][inx].set_length(j)
+                self.bonds[inx][k_1].set_length(j)
             return 0
         return -1
 
@@ -187,7 +193,7 @@ class Notation:
 
 
 class Molecule:
-    def __init__(self, mol2file='', n=5):
+    def __init__(self, mol2file='', n=5, divider=None):
         self.atoms = {}
         self.n = n
         self.mol2file = mol2file
@@ -196,7 +202,7 @@ class Molecule:
             l = line.split()
             self.atoms.update({int(l[0]): Atom(l[1], *l[5::])})
             self.atoms[int(l[0])].set_xyz(*list(map(float, l[2:5:])))
-        self.notation = Notation(n=self.n, info_from_file=xyz_names_bonds(self.mol2file))
+        self.notation = Notation(n=self.n, info_from_file=xyz_names_bonds(self.mol2file), divider=divider)
         self.bonds_from_mol2 = {}
         for line in bonds.split('\n')[1::]:
             l = line.split()
@@ -205,12 +211,13 @@ class Molecule:
                                           length=np.linalg.norm(self.atoms[l[1]].position()
                                                                 - self.atoms[l[2]].position()))})
 
-    def refresh_dimensional(self, relax=True):
+    def refresh_dimensional(self, relax=True, with_change_notation=False):
         ds = self.get_dimensional(relax=relax)
         for k, i in ds.items():
             self.atoms[k].x = i[0]
             self.atoms[k].y = i[1]
             self.atoms[k].z = i[2]
+        if with_change_notation: self.notation.set_notation(list(copy.deepcopy(self.to_positions_array())))
 
     def set_dimensional(self, positions):
         for k, i in enumerate(positions):
@@ -229,15 +236,15 @@ class Molecule:
         :param attr: string_describe
         '''
         asection = self.notation.divider.anti_scube[section]
-        if self.notation.notation.get(c1) == None:
+        if self.notation.notation.get(c1) is None:
             self.notation.notation.update({c1: {}})
         self.notation.notation[c1].update({c2: section})
-        if self.notation.notation.get(c2) == None:
+        if self.notation.notation.get(c2) is None:
             self.notation.notation.update({c2: {}})
         self.notation.notation[c2].update({c1: asection})
-        if self.notation.bonds.get(c1) == None:
+        if self.notation.bonds.get(c1) is None:
             self.notation.bonds.update({c1: {}})
-        if self.notation.bonds.get(c2) == None:
+        if self.notation.bonds.get(c2) is None:
             self.notation.bonds.update({c2: {}})
         self.notation.bonds[c1].update({c2: Bond(c1, c2, attr=attr, length=length, section=section)})
         self.notation.bonds[c2].update({c1: Bond(c2, c1, attr=attr, length=length, section=asection)})
@@ -278,7 +285,7 @@ class Molecule:
         if tmp == '':
             tmp = mkdtemp()
             del_flag = True
-        file = os.path.join(tmp, 'to_calc_heat.xyz')
+        file = os.path.join(tmp, 'to_calc_energy.xyz')
         with open(file, 'w') as f:
             n = len(names)
             f.write(str(n) + '\n\n')
@@ -296,7 +303,7 @@ class Molecule:
                     a1 = self.atoms[i.c1].name
                     a2 = self.atoms[i.c2].name
                     atoms, length = (a1, a2) if a1 < a2 else (a2, a1), i.length
-                    x = tuple([atoms[0], atoms[1], length])
+                    x = tuple([atoms[0], atoms[1], round(length, 1)])
                     if not pairs.get(x):
                         pairs.update({x: 0})
                     pairs[x] += 1
@@ -340,7 +347,7 @@ class Molecule:
                     return False
         return True
 
-    def length_interaction(self, l_limit=0.6, g_limit=3.0):
+    def length_interaction(self, l_limit=0.5, g_limit=3.0):
         atoms = self.to_positions_array()
         interaction = {}
         for ix, i in enumerate(atoms):
@@ -418,7 +425,7 @@ class Molecule:
                               np.random.randint(len(self.notation.divider.scube)))
             return child
 
-    def mutation(self, probailities=[0.4, 0.8, 1]):
+    def mutation(self, probailities=(0.4, 0.8, 1)):
         '''
         :param probailities: less [0] is p_section_change, [1] is p_length_change, [2] is bond_change
         :return:
@@ -442,7 +449,23 @@ class Molecule:
         return mutant
 
 if __name__ == '__main__':
-    n = 2
-    ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n)
-    print(ln.interact_pair())
+    n = 30
+    divider = Spherical_divider(n=n)
+    ln = Molecule('./ordered_mol2/3a_opted.mol2', n=n, divider=divider)
+    pr = Molecule('./ordered_mol2/4_opted.mol2', n=n, divider=divider)
+    # pr = copy.deepcopy(ln)
+    print(compare_structers(ln.to_positions_array(), pr.to_positions_array()))
+    ln.refresh_dimensional()
+    pr.refresh_dimensional()
+    print(compare_structers(ln.to_positions_array(), pr.to_positions_array()))
+    ln.notation.set_notation(copy.deepcopy((ln.atoms)))
+    ln.refresh_dimensional()
+    print(compare_structers(ln.to_positions_array(), pr.to_positions_array()))
+
+    # pr.to_xyz('C.xyz')
+    # print(ln.get_energy(), pr.get_energy())
+
+    # ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n)
+    # print(ln.interact_pair())
+
     # pr = Molecule('./prepared_mols2/4_opted.mol2', n=n)
