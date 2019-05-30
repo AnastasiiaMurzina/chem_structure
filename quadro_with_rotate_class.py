@@ -1,6 +1,5 @@
 import numpy as np
 from numpy import arctan2
-from itertools import combinations
 
 
 def cartesian_to_spherical(vector):
@@ -27,6 +26,7 @@ class Spherical_divider():
             divs[i] = divs[i] / np.linalg.norm(divs[i])
         self.scube = divs
         self.d_min = np.linalg.norm(divs[0]-divs[2])
+        self.anti_scube = {}
         self.set_anti_scube()
 
 
@@ -58,17 +58,20 @@ class Spherical_divider():
             fs = self.find_section(current)
             if fs != s1:
                 return fs
-
+        return s2
 
     def set_anti_scube(self):
-        self.anti_scube = {}
         for i, j in enumerate(self.scube):
             self.anti_scube.update({i: self.find_section(j)})
 
 if __name__ == '__main__':
-    n = 3
+    # pass
+    n = 5
     s = Spherical_divider(n)
-    ss = s.nearest_from_to(0, 9)
+    k1, k2 = 5, 10
+    ss = s.nearest_from_to(k1, k2)
+    print(np.linalg.norm(s.scube[k1]-s.scube[k2]))
+    print(np.linalg.norm(s.scube[k1]-s.scube[ss]))
     # k = len(s)
     # d = [np.linalg.norm(s1-s2) for s1, s2 in (combinations(s, 2))]
     # print(min(d))

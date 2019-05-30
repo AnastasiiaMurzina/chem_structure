@@ -29,7 +29,7 @@ def searcher(substrat, product, zero_bonds_only=False,
         ch = st.get_child(zero=zero_bonds_only, change_length=length_change)
         ch_dim = dimensional_structure(ch.notation, relax=True)
         compared = product.compare_with(np.array([i for _, i in ch_dim.items()]))
-        _, s_comp_c, _ = st.notation.diff(pr.notation)
+        _, s_comp_c, _ = st.notation.diff(product.notation)
         if s_comp_c < s_comp:
         # if 1-np.random.rand() < c1/compared:
             paths.append(compared)
@@ -338,8 +338,8 @@ def read_report(report_name):
 
 
 if __name__ == '__main__':
-    def calc_to_the_aim_path():
-        n = 20
+    n = 20
+    def calc_to_the_aim_path(n):
         divider = Spherical_divider(n=n)
         # reaction = 'mopac_example' # '3a->4' #
         reaction = '3a->4' #
@@ -347,81 +347,65 @@ if __name__ == '__main__':
         if reaction == '3a->4':
             ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n, divider=divider)
             pr = Molecule('./prepared_mols2/4_opted.mol2', n=n, divider=divider)
-            pr.refresh_dimensional()
 
         # elif reaction == 'vanadii':
         #     ln = Molecule('./vanadii/3a_singlet_opted.mol2', n=n)
         #     pr = Molecule('./vanadii/ts_3a_4a_opted.mol2', n=n)
-        #     pr.refresh_dimensional()
         else:
             ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
             pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
-            pr.refresh_dimensional()
 
-        kk = 114
+        kk = 115
+        start_energy = ln.get_energy()
+        finish_energy = pr.get_energy()
+        pr.refresh_dimensional()
         ms = genetic_to_the_aim(ln, pr, write=True, file_log=reaction + '_to_the_aim_report_lslittle_'+str(kk))
+        ms.insert(0, start_energy)
+        ms.append(finish_energy)
         print(kk, max(ms))
 
-    def keep_equations():
-        n = 10
-        ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
-        lstl_solver = Equation_system(ln.interact_pair(), ln.get_energy())
+    def keep_equations(file_name):
+        n = 30
+        ln = Molecule(file_name, n=n)
+        lstl_solver = Equation_system(ln.length_interaction(), ln.get_energy())
         for _ in range(50):
             ln = ln.mutation([0.5, 1])
             ln.refresh_dimensional()
+            interaction = ln.length_interaction()
+            if isinstance(interaction, float):
+                print(interaction)
+                continue
             en = ln.get_energy()
             if en is None:
                 continue
-            lstl_solver.push(ln.interact_pair(), en)
-        lstl_solver.to_file('equations')
+            lstl_solver.push(interaction, en)
+        lstl_solver.to_file('equations_30_500')
         # multi_criterical(ln, pr, n=5000)
 
+    file_name = './ordered_mol2/js_exapmle_init.mol2'
+    # file_name = './prepared_mols2/3a_opted.mol2'
 
-
-    # keep_equations()
+    # keep_equations(file_name)
     def read_eqs():
-        n = 10
+        n = 30
+        # ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n)
         ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
         lstl_solver = Equation_system()
-        lstl_solver.from_file('equations')
-        print(lstl_solver.equations)
+        lstl_solver.from_file('equations_30_500')
         ss = lstl_solver.solve()
+        print(apply_solution(ss, ln.length_interaction()))
         mops = []
         appr = []
-        for _ in range(20):
+        for _ in range(100):
             ln = ln.mutation([0.5, 1])
-            mops.append(ln.get_energy())
-            appr.append(apply_solution(ss, ln.interact_pair()))
+            ln.refresh_dimensional()
+            interact = ln.length_interaction()
+            if (not isinstance(interact, float)) and lstl_solver.can_i_solve_it(interact):
+                mops.append(ln.get_energy())
+                appr.append(apply_solution(ss, interact))
+                print(mops[-1])
+                print(appr[-1])
         print(mops)
         print(appr)
+        print('init')
     read_eqs()
-
-
-
-    # print(read_report('3a->4_to_the_aim_report_sd18_37'))
-    # maxs = []
-    # for i in range(3, 4):
-        # ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n)
-        # pr = Molecule('./prepared_mols2/4_opted.mol2', n=n)
-        # pr.refresh_dimensional()
-        # ms = genetic_to_the_aim(ln, pr, write=True, file_log=reaction+'_to_the_aim_report_llittle_'+str(i))
-#
-#         # [-4670.42293, -4652.17042, -4651.42057, -4670.2851, -4634.28999, -4639.88718, -4664.15278, -4636.34603, -4669.5794, -4664.79984, -4672.00149, -4645.9287, -4671.03974, -4628.04646, -4655.98681, -4643.14863, -4665.50946, -4637.22611, -4662.35222, -4662.25727, -4653.60553, -4639.29279, -4650.51107, -4648.95518, -4664.80984, -4651.20882, -4639.90053, -4664.7966, -4659.71421, -4648.4874, -4672.32384, -4667.39659, -4629.87114, -4662.09317, -4656.08972, -4651.39208, -4659.6832, -4677.20861, -4640.2952, -4659.6825, -4664.57144, -4663.13936, -4652.45947, -4658.74559, -4639.98762, -4663.22053, -4647.45095, -4664.91409, -4666.24898, -4658.26272]
-# # -4677.20861
-#         maxs.append(max(ms))
-#     print(ms)
-#     print(maxs)
-#     print(min(maxs))
-
-    # print(ln.notation.get_energy())
-    # print(pr.notation.get_energy())
-    # real_random_path(ln, pr, n=10000, write=True, file_log=reaction+'_random_report')
-    # print(max(p))
-    # print(p)
-    # print(max(ms))
-    # print(ms)
-    # print(ln.notation.l_change(pr.notation, follow_energy=True))
-    # print(ln.notation.s_change(pr.notation, follow_energy=True))
-
-
-    # write_mol2_file('My_' + name + '_' + 'q0.mol2', atoms_info, dim_structure, bonds=paired)

@@ -2,6 +2,7 @@ import os
 from tempfile import mkdtemp
 from shutil import rmtree
 import matplotlib.pyplot as plt
+from itertools import combinations
 
 from layouter import *
 from mol2_worker import read_mol2, Atom, xyz_names_bonds, compare_structers, Bond, bonds_to_dict
@@ -347,21 +348,22 @@ class Molecule:
                     return False
         return True
 
-    def length_interaction(self, l_limit=0.5, g_limit=3.0):
+    def length_interaction(self, l_limit=0.5, g_limit=3.5):
         atoms = self.to_positions_array()
         interaction = {}
         for ix, i in enumerate(atoms):
             for jx, j in enumerate(atoms):
                 if ix != jx:
-                    d = np.linalg.norm(i-j)
+                    d = round(np.linalg.norm(i-j), 1)
                     if l_limit > d:
                         return np.inf
                     elif d < g_limit:
                         a1, a2 = self.atoms[ix+1].name, self.atoms[jx+1].name
                         if a1 > a2: a1, a2 = a2, a1
-                        if not interaction.get(tuple([a1, a2, d])):
-                            interaction.update({tuple([a1, a2, d]): 0})
-                        interaction[(tuple([a1, a2, d]))] += 1
+                        cur_el = tuple([a1, a2, d])
+                        if not interaction.get(cur_el):
+                            interaction.update({cur_el: 0})
+                        interaction[cur_el] += 1
         return interaction
 
     def atom_and_bonded_with_it(self):
@@ -425,9 +427,9 @@ class Molecule:
                               np.random.randint(len(self.notation.divider.scube)))
             return child
 
-    def mutation(self, probailities=(0.4, 0.8, 1)):
+    def mutation(self, probailities=(0.4, 0.8)):
         '''
-        :param probailities: less [0] is p_section_change, [1] is p_length_change, [2] is bond_change
+        :param probailities: less [0] is p_section_change, [1] is p_length_change, other is bond_change
         :return:
         '''
         mutant = copy.deepcopy(self)
@@ -441,7 +443,9 @@ class Molecule:
             mutant.notation.notation[a2][a1] = self.notation.divider.anti_scube[n_section]
         elif choi < probailities[1]:
             dl = np.random.normal(0, 0.5, 1)[0]
-            mutant.notation.bonds[a1][a2].set_length(mutant.notation.bonds[a1][a2].length + round(dl, 1))
+            cur_len = mutant.notation.bonds[a1][a2].length
+            if 0.5 < cur_len + dl < 2.5:
+                mutant.notation.bonds[a1][a2].set_length(cur_len + round(dl, 1))
         else:
             b1, b2 = sorted(np.random.choice(range(len(self.atoms)), 2) + np.array([1, 1]))
             mutant.add_bond(b1, b2, round(np.random.normal(1.1, 0.3), 1),
