@@ -177,13 +177,12 @@ def genetic_to_the_aim(reactant, product, write=False,
 
 
 class Equation_system:
-    def __init__(self, first_linear=None, energy=None):
-        if first_linear is None:
-            self.equations = []
-            self.variables = set([])
-        else:
-            self.equations = [first_linear]
-            self.variables = set(first_linear.keys())
+    def __init__(self, first_linear=None, energy=None, bias=True):
+        self.variables = set([tuple(['const', 'const', 0.0])]) if bias else set([])
+        self.equations = []
+        if not (first_linear is None):
+            self.equations.append(first_linear)
+            self.variables.update(first_linear.keys())
         if energy is None:
             self.energy = []
         else:
@@ -364,11 +363,10 @@ if __name__ == '__main__':
         ms.append(finish_energy)
         print(kk, max(ms))
 
-    def keep_equations(file_name):
-        n = 30
+    def keep_equations(file_name, saver, raws, n=15):
         ln = Molecule(file_name, n=n)
         lstl_solver = Equation_system(ln.length_interaction(), ln.get_energy())
-        for _ in range(50):
+        for _ in range(raws):
             ln = ln.mutation([0.5, 1])
             ln.refresh_dimensional()
             interaction = ln.length_interaction()
@@ -379,24 +377,20 @@ if __name__ == '__main__':
             if en is None:
                 continue
             lstl_solver.push(interaction, en)
-        lstl_solver.to_file('equations_30_500')
+        lstl_solver.to_file(saver)
         # multi_criterical(ln, pr, n=5000)
 
-    file_name = './ordered_mol2/js_exapmle_init.mol2'
-    # file_name = './prepared_mols2/3a_opted.mol2'
-
-    # keep_equations(file_name)
-    def read_eqs():
-        n = 30
-        # ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n)
-        ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
+    def read_eqs(file_name, file_eqs, n=15, k=100):
+        ln = Molecule(file_name, n=n)
         lstl_solver = Equation_system()
-        lstl_solver.from_file('equations_30_500')
+        lstl_solver.from_file(file_eqs)
         ss = lstl_solver.solve()
+        print(ss)
         print(apply_solution(ss, ln.length_interaction()))
+        ln.refresh_dimensional()
         mops = []
         appr = []
-        for _ in range(100):
+        for _ in range(k):
             ln = ln.mutation([0.5, 1])
             ln.refresh_dimensional()
             interact = ln.length_interaction()
@@ -408,4 +402,11 @@ if __name__ == '__main__':
         print(mops)
         print(appr)
         print('init')
-    read_eqs()
+
+    # file_name = './prepared_mols2/3a_opted.mol2'
+    file_name = './ordered_mol2/js_exapmle_init.mol2'
+    raws = 700
+    saver = 'equations_b_'+str(raws)
+    # keep_equations(file_name, saver, raws)
+    read_eqs(file_name, saver, n=15, k=100)
+    print(raws)

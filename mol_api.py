@@ -348,9 +348,9 @@ class Molecule:
                     return False
         return True
 
-    def length_interaction(self, l_limit=0.5, g_limit=3.5):
+    def length_interaction(self, l_limit=0.5, g_limit=3.5, bias=True):
         atoms = self.to_positions_array()
-        interaction = {}
+        interaction = {tuple(['const', 'const', 0.0]): 1} if bias else {}
         for ix, i in enumerate(atoms):
             for jx, j in enumerate(atoms):
                 if ix != jx:
