@@ -161,10 +161,7 @@ def genetic_to_the_aim(reactant, product, write=False,
             mutant.notation.l_change_step(product.notation)
         if apply_change(): reactant = copy.deepcopy(mutant)
         d = reactant.notation.diff(product.notation)
-    while mutant.notation.l_change_step(product.notation) != -1:
-        if apply_change(): reactant = copy.deepcopy(mutant)
-        mutant = copy.deepcopy(reactant)
-    while mutant.notation.s_change_step(product.notation) != -1:
+    while mutant.notation.l_change_step(product.notation) != -1 or mutant.notation.s_change_step(product.notation) != -1:
         if apply_change(): reactant = copy.deepcopy(mutant)
         mutant = copy.deepcopy(reactant)
     return path #, msds
@@ -175,10 +172,43 @@ def genetic_to_the_aim(reactant, product, write=False,
     # return s+l, len(s)
     ###########################################
 
+def read_report(report_name, xyz=False):
+    with open(report_name, 'r') as f:
+        n = int(f.readline())
+        k = int(f.readline())
+        ens = [float(f.readline())]
+        if xyz: poss = []
+        for _ in range(n-1):
+            mol = []
+            for _ in range(k):
+                mol.append(f.readline().split())
+            f.readline()
+            f.readline()
+            if xyz: poss.append(mol)
+            ens.append(float(f.readline()))
+    return (ens, poss) if xyz else ens
+
+def length_xyz_interaction(report_read, l_limit=0.5, g_limit=3.5, bias=True):
+    names, atoms = report_read
+    interaction = {tuple(['const', 'const', 0.0]): 1} if bias else {}
+    for ix, i in enumerate(atoms):
+        for jx, j in enumerate(atoms):
+            if ix != jx:
+                d = round(np.linalg.norm(i-j), 1)
+                if l_limit > d:
+                    return np.inf
+                elif d < g_limit:
+                    a1, a2 = names[ix], names[jx]
+                    if a1 > a2: a1, a2 = a2, a1
+                    cur_el = tuple([a1, a2, d])
+                    if not interaction.get(cur_el):
+                        interaction.update({cur_el: 0})
+                    interaction[cur_el] += 1
+    return interaction
 
 class Equation_system:
     def __init__(self, first_linear=None, energy=None, bias=True):
-        self.variables = set([tuple(['const', 'const', 0.0])]) if bias else set([])
+        self.variables = {tuple(['const', 'const', 0.0])} if bias else set([]) # probably if use this __init__
         self.equations = []
         if not (first_linear is None):
             self.equations.append(first_linear)
@@ -189,7 +219,6 @@ class Equation_system:
             self.energy = [energy]
 
     def to_matrix(self):
-        # TODO add stack one one to get bias
         x = np.zeros((len(self.energy), len(self.variables)))
         order_of_vars = []
         for ix_e, var in enumerate(self.variables):
@@ -211,6 +240,21 @@ class Equation_system:
                 self.energy.append(float(koeffs.pop(0)))
                 eq = {i: j for i, j in zip(self.variables, list(map(int, koeffs)))}
                 self.equations.append(eq)
+
+    def from_reports(self, files):
+        for file in files:
+            ens, poss = read_report(file, xyz=True)
+            to_names = poss.pop(0)
+            names = [i[0] for i in to_names]
+            atoms = [np.array(list(map(float, i[1::]))) for i in to_names]
+            interaction = length_xyz_interaction((names, atoms))
+            if isinstance(interaction, dict):
+                self.push(interaction, ens.pop(0))
+            for item, energy in zip(poss, ens):
+                atoms = [np.array(list(map(float, i[1::]))) for i in item]
+                interaction = length_xyz_interaction((names, atoms))
+                if isinstance(interaction, dict):
+                    self.push(interaction, energy)
 
 
     def to_file(self, file, mode='w'):
@@ -236,9 +280,12 @@ class Equation_system:
         return len(variables.keys() - self.variables) == 0
 
 
-    def solve(self):
+    def solve(self, centered=True):
         system, ens, order = self.to_matrix()
         try:
+            if centered:
+                mm = ens.mean()
+                return {i: j for i, j in zip(order, np.linalg.lstsq(system, ens-mm, rcond=None)[0])}, mm
             return {i: j for i, j in zip(order, np.linalg.lstsq(system, ens, rcond=None)[0])}
         except np.linalg.LinAlgError:
             return -1
@@ -315,33 +362,17 @@ def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file
                 print('difference accept', difference_pr)
                 print('energy accept', energy_pr)
 
-    # print(difference)
-    # print(distance)
-    # print(energies)
-
     print('comparator', comparator)
     print('mopac_c', mopac_c)
     print('nn', n_info)
-
-def read_report(report_name):
-    with open(report_name, 'r') as f:
-        n = int(f.readline())
-        k = int(f.readline())
-        ens = [float(f.readline())]
-
-        for _ in range(n-1):
-            for _ in range(k+2):
-                f.readline()
-            ens.append(float(f.readline()))
-    return ens
 
 
 if __name__ == '__main__':
     n = 20
     def calc_to_the_aim_path(n):
         divider = Spherical_divider(n=n)
-        # reaction = 'mopac_example' # '3a->4' #
-        reaction = '3a->4' #
+        reaction = 'mopac_example' # '3a->4' #
+        # reaction = '3a->4' #
         # reaction = 'vanadii'
         if reaction == '3a->4':
             ln = Molecule('./prepared_mols2/3a_opted.mol2', n=n, divider=divider)
@@ -354,14 +385,20 @@ if __name__ == '__main__':
             ln = Molecule('./ordered_mol2/js_exapmle_init.mol2', n=n)
             pr = Molecule('./ordered_mol2/js_exapmle_finish.mol2', n=n)
 
-        kk = 115
+        # kk = 115
         start_energy = ln.get_energy()
         finish_energy = pr.get_energy()
         pr.refresh_dimensional()
-        ms = genetic_to_the_aim(ln, pr, write=True, file_log=reaction + '_to_the_aim_report_lslittle_'+str(kk))
+        ms = genetic_to_the_aim(ln, pr, write=True, file_log=reaction + '_report_2')#+str(kk))
         ms.insert(0, start_energy)
         ms.append(finish_energy)
-        print(kk, max(ms))
+        print(max(ms))
+        # print(kk, max(ms))
+
+    # calc_to_the_aim_path(n)
+    system = Equation_system()
+    system.from_reports(['mopac_example_report_', 'mopac_example_report_2'])
+    print(system.solve())
 
     def keep_equations(file_name, saver, raws, n=15):
         ln = Molecule(file_name, n=n)
@@ -384,9 +421,10 @@ if __name__ == '__main__':
         ln = Molecule(file_name, n=n)
         lstl_solver = Equation_system()
         lstl_solver.from_file(file_eqs)
-        ss = lstl_solver.solve()
-        print(ss)
-        print(apply_solution(ss, ln.length_interaction()))
+        ss, mean_en = lstl_solver.solve()
+        # print(ss)
+        print('m', mean_en)
+        print(apply_solution(ss, ln.length_interaction())+mean_en)
         ln.refresh_dimensional()
         mops = []
         appr = []
@@ -396,17 +434,138 @@ if __name__ == '__main__':
             interact = ln.length_interaction()
             if (not isinstance(interact, float)) and lstl_solver.can_i_solve_it(interact):
                 mops.append(ln.get_energy())
-                appr.append(apply_solution(ss, interact))
+                appr.append(apply_solution(ss, interact)+mean_en)
                 print(mops[-1])
                 print(appr[-1])
         print(mops)
         print(appr)
-        print('init')
 
-    # file_name = './prepared_mols2/3a_opted.mol2'
-    file_name = './ordered_mol2/js_exapmle_init.mol2'
-    raws = 700
-    saver = 'equations_b_'+str(raws)
-    # keep_equations(file_name, saver, raws)
-    read_eqs(file_name, saver, n=15, k=100)
-    print(raws)
+
+    def keep_equations_path(file_name, to_file, saver, n=15, k=5):
+        divider = Spherical_divider(n=n)
+        ln = Molecule(file_name, n=n, divider=divider)
+        ln_init = copy.deepcopy(ln)
+        pr = Molecule(to_file, n=n, divider=divider)
+        lstl_solver = Equation_system(ln.length_interaction(), ln.get_energy())
+
+        def apply_change():
+            ln.refresh_dimensional()
+            interaction = ln.length_interaction()
+            if isinstance(interaction, float):
+                print(interaction)
+                return -1
+            en = ln.get_energy()
+            if en is None:
+                return -1
+            lstl_solver.push(interaction, en)
+
+        d = ln.notation.diff(pr.notation)
+        for _ in range(k):
+            ln = copy.deepcopy(ln_init)
+            while d[2] > 0.1 and d[1] != 0:
+                if np.random.random() < 0.5:
+                    ln.notation.s_change_step(pr.notation)
+                else:
+                    ln.notation.l_change_step(pr.notation)
+                apply_change()
+                d = ln.notation.diff(pr.notation)
+            while ln.notation.l_change_step(pr.notation) != -1:
+                apply_change()
+            while ln.notation.s_change_step(pr.notation) != -1:
+                apply_change()
+        lstl_solver.to_file(saver)
+
+    def read_eqs_path(file_name, to_file, file_eqs, n=15, solve_rel_mean=True):
+
+        def apply_change():
+            ln.refresh_dimensional()
+            interact = ln.length_interaction()
+            if isinstance(interact, float):
+                print(interact)
+                return -1
+            if (not isinstance(interact, float)) and lstl_solver.can_i_solve_it(interact):
+                mops.append(ln.get_energy())
+                if solve_rel_mean:
+                    appr.append(apply_solution(ss, interact)+mean_en)
+                else:
+                    appr.append(apply_solution(ss, interact))
+                print(mops[-1])
+                print(appr[-1])
+
+        divider = Spherical_divider(n=n)
+        ln = Molecule(file_name, n=n, divider=divider)
+        # ln_init = copy.deepcopy(ln)
+        pr = Molecule(to_file, n=n, divider=divider)
+        lstl_solver = Equation_system()
+        lstl_solver.from_file(file_eqs)
+        if solve_rel_mean:
+            ss, mean_en = lstl_solver.solve()
+        else:
+            ss = lstl_solver.solve(centered=solve_rel_mean)
+        d = ln.notation.diff(pr.notation)
+        # print('m', mean_en)
+        # print(apply_solution(ss, ln.length_interaction())+mean_en)
+        ln.refresh_dimensional()
+        mops = []
+        appr = []
+        while d[2] > 0.1 and d[1] != 0:
+            if np.random.random() < 0.5:
+                ln.notation.s_change_step(pr.notation)
+            else:
+                ln.notation.l_change_step(pr.notation)
+            apply_change()
+            d = ln.notation.diff(pr.notation)
+        while ln.notation.l_change_step(pr.notation) != -1:
+            apply_change()
+        while ln.notation.s_change_step(pr.notation) != -1:
+            apply_change()
+        print(mops)
+        print(appr)
+        print(np.corrcoef(np.array(mops), np.array(appr)))
+        plt.scatter(mops, appr)
+        plt.show()
+        print(file_name)
+
+    def keep_just_one_path(from_file, to_file, path_file, saver, n=15, k=5):
+        # TODO keep one path and from report get equations
+        divider = Spherical_divider(n=n)
+        ln = Molecule(file_name, n=n, divider=divider)
+        ln_init = copy.deepcopy(ln)
+        pr = Molecule(to_file, n=n, divider=divider)
+        lstl_solver = Equation_system(ln.length_interaction(), ln.get_energy())
+
+        def apply_change():
+            ln.refresh_dimensional()
+            interaction = ln.length_interaction()
+            if isinstance(interaction, float):
+                print(interaction)
+                return -1
+            en = ln.get_energy()
+            if en is None:
+                return -1
+            lstl_solver.push(interaction, en)
+
+        d = ln.notation.diff(pr.notation)
+        for _ in range(k):
+            ln = copy.deepcopy(ln_init)
+            while d[2] > 0.1 and d[1] != 0:
+                if np.random.random() < 0.5:
+                    ln.notation.s_change_step(pr.notation)
+                else:
+                    ln.notation.l_change_step(pr.notation)
+                apply_change()
+                d = ln.notation.diff(pr.notation)
+            while ln.notation.l_change_step(pr.notation) != -1:
+                apply_change()
+            while ln.notation.s_change_step(pr.notation) != -1:
+                apply_change()
+        lstl_solver.to_file(saver)
+
+
+    # # file_name = './prepared_mols2/3a_opted.mol2'
+    # # to_file = './prepared_mols2/4_opted.mol2'
+    # file_name = './ordered_mol2/js_exapmle_init.mol2'
+    # to_file = './ordered_mol2/js_exapmle_finish.mol2'
+    # saver = 'equations_mopac_example2'
+    # # keep_equations_path(file_name, to_file, saver)
+    # read_eqs_path(file_name, to_file, saver, n=20, solve_rel_mean=False)
