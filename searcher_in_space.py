@@ -124,7 +124,7 @@ def random_to_the_aim_search(reactant, product, write=False, file_log='reaction_
     return msds
 
 
-def genetic_to_the_aim(reactant, product, write=False,
+def genetic_to_the_aim(reactant: Molecule, product: Molecule, write=False,
                              file_log='reaction_report'):
     """
     :return: energies_path and length of sections changes
@@ -297,6 +297,12 @@ def apply_solution(solution: dict, interacted: dict):
         en += solution[key]*item
     return en
 
+def apply_read_solution(solution: dict, interacted: list):
+    en = 0
+    for key, item in interacted.items():
+        en += solution[key]*item
+    return en
+
 
 def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file_log='multi_report'):
     temp_dir = mkdtemp()
@@ -368,7 +374,6 @@ def multi_criterical(mol1: Molecule, to_mol: Molecule, n=1000, write=False, file
 
 
 if __name__ == '__main__':
-    n = 20
     def calc_to_the_aim_path(n):
         divider = Spherical_divider(n=n)
         reaction = 'mopac_example' # '3a->4' #
@@ -395,10 +400,6 @@ if __name__ == '__main__':
         print(max(ms))
         # print(kk, max(ms))
 
-    # calc_to_the_aim_path(n)
-    system = Equation_system()
-    system.from_reports(['mopac_example_report_', 'mopac_example_report_2'])
-    print(system.solve())
 
     def keep_equations(file_name, saver, raws, n=15):
         ln = Molecule(file_name, n=n)
@@ -526,40 +527,52 @@ if __name__ == '__main__':
         plt.show()
         print(file_name)
 
-    def keep_just_one_path(from_file, to_file, path_file, saver, n=15, k=5):
-        # TODO keep one path and from report get equations
-        divider = Spherical_divider(n=n)
-        ln = Molecule(file_name, n=n, divider=divider)
-        ln_init = copy.deepcopy(ln)
-        pr = Molecule(to_file, n=n, divider=divider)
-        lstl_solver = Equation_system(ln.length_interaction(), ln.get_energy())
 
-        def apply_change():
-            ln.refresh_dimensional()
-            interaction = ln.length_interaction()
-            if isinstance(interaction, float):
-                print(interaction)
-                return -1
-            en = ln.get_energy()
-            if en is None:
-                return -1
-            lstl_solver.push(interaction, en)
+    def approx_report(report_file, appr=[], mops=[]):
+        ens, poss = read_report(report_file, xyz=True)
+        to_names = poss.pop(0)
+        names = [i[0] for i in to_names]
+        atoms = [np.array(list(map(float, i[1::]))) for i in to_names]
+        interaction = length_xyz_interaction((names, atoms))
+        if (not isinstance(interaction, float)) and system.can_i_solve_it(interaction):
+            appr.append(apply_read_solution(ss, interaction))
+            mops.append(ens.pop(0))
 
-        d = ln.notation.diff(pr.notation)
-        for _ in range(k):
-            ln = copy.deepcopy(ln_init)
-            while d[2] > 0.1 and d[1] != 0:
-                if np.random.random() < 0.5:
-                    ln.notation.s_change_step(pr.notation)
-                else:
-                    ln.notation.l_change_step(pr.notation)
-                apply_change()
-                d = ln.notation.diff(pr.notation)
-            while ln.notation.l_change_step(pr.notation) != -1:
-                apply_change()
-            while ln.notation.s_change_step(pr.notation) != -1:
-                apply_change()
-        lstl_solver.to_file(saver)
+        for en, item in zip(ens, poss):
+            atoms = [np.array(list(map(float, i[1::]))) for i in item]
+            interaction = length_xyz_interaction((names, atoms))
+            if (not isinstance(interaction, float)) and system.can_i_solve_it(interaction):
+                appr.append(apply_read_solution(ss, interaction))
+                mops.append(en)
+        return mops, appr
+
+    #
+    # calc_to_the_aim_path(n)
+    system = Equation_system()
+    system.from_reports(['equations_mn_3a4_0', 'equations_mn_3a4_1'])
+    ss = system.solve(False)
+    print(len(ss))
+    print(len(system.variables))
+
+    # file_name = './ordered_mol2/js_exapmle_init.mol2'
+    file_name = './prepared_mols2/3a_opted.mol2'
+    # to_file = './ordered_mol2/js_exapmle_finish.mol2'
+    # to_file = './prepared_mols2/4_opted.mol2'
+    # saver = 'equations_mn_3a4_4'
+    # n = 20
+    # divider = Spherical_divider(n)
+    # genetic_to_the_aim(Molecule(file_name, n, divider), Molecule(to_file, n, divider), write=True, file_log=saver)
+    mops, appr = approx_report('equations_mn_3a4_2')
+    #
+    #
+    print(mops)
+    print(appr)
+    print(np.corrcoef(np.array(mops), np.array(appr)))
+    plt.xlabel('Mopac energy, eV')
+    plt.ylabel('Approximate energy, eV')
+    plt.scatter(mops, appr)
+    plt.show()
+
 
 
     # # file_name = './prepared_mols2/3a_opted.mol2'
