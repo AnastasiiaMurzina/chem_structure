@@ -125,7 +125,7 @@ def random_to_the_aim_search(reactant, product, write=False, file_log='reaction_
 
 
 def genetic_to_the_aim(reactant: Molecule, product: Molecule, write=False,
-                             file_log='reaction_report'):
+                             file_log='reaction_report', trash_keeper=''):
     """
     :return: energies_path and length of sections changes
     """
@@ -135,20 +135,21 @@ def genetic_to_the_aim(reactant: Molecule, product: Molecule, write=False,
         if en is None:
             return False
         delta = en - path[-1]
+        flag = False
         if np.random.random() < np.exp(-delta):
-            path.append(path[-1]+delta)
+            flag = True
+            path.append(en)
             # print('difference accept', mutant.notation.l_diff(product.notation))
             if write:
-                mutant.to_xyz(file_log, title=str(path[-1]), mode='a')
+                mutant.to_xyz(file_log, title=str(en), mode='a')
                 with open(file_log, 'a') as f_w:
-                    f_w.write('################\n')
-            return True
-        return False
+                    f_w.write('##\n')
+        if trash_keeper != '':
+            mutant.to_xyz(trash_keeper, title=str(en), mode='a')
+            with open(trash_keeper, 'a') as f_w:
+                f_w.write('##\n')
+        return flag
 
-    with open(file_log, 'w') as f_w:
-        # it need write another one num of steps !!!
-        f_w.write(str(len(reactant.notation.s_diff(product.notation))
-                      +len(reactant.notation.l_diff(product.notation)))+'\n')
     d = reactant.notation.diff(product.notation)
     path = [reactant.get_energy()]
     # msds = []
@@ -174,18 +175,18 @@ def genetic_to_the_aim(reactant: Molecule, product: Molecule, write=False,
 
 def read_report(report_name, xyz=False):
     with open(report_name, 'r') as f:
-        n = int(f.readline())
         k = int(f.readline())
         ens = [float(f.readline())]
         if xyz: poss = []
-        for _ in range(n-1):
+        flag = True
+        while flag:
             mol = []
             for _ in range(k):
                 mol.append(f.readline().split())
-            f.readline()
-            f.readline()
             if xyz: poss.append(mol)
-            ens.append(float(f.readline()))
+            f.readline()
+            flag = f.readline().replace('\n','').isdigit()
+            if flag: ens.append(float(f.readline()))
     return (ens, poss) if xyz else ens
 
 def length_xyz_interaction(report_read, l_limit=0.5, g_limit=3.5, bias=True):
@@ -208,15 +209,15 @@ def length_xyz_interaction(report_read, l_limit=0.5, g_limit=3.5, bias=True):
 
 class Equation_system:
     def __init__(self, first_linear=None, energy=None, bias=True):
-        self.variables = {tuple(['const', 'const', 0.0])} if bias else set([]) # probably if use this __init__
+        self.variables = set({})
+        # self.variables = {tuple(['const', 'const', 0.0])} if bias else set([]) # probably if use this __init__
         self.equations = []
+        self.energy = []
         if not (first_linear is None):
             self.equations.append(first_linear)
             self.variables.update(first_linear.keys())
-        if energy is None:
-            self.energy = []
-        else:
-            self.energy = [energy]
+        if not(energy is None):
+            self.energy.append(energy)
 
     def to_matrix(self):
         x = np.zeros((len(self.energy), len(self.variables)))
@@ -230,7 +231,7 @@ class Equation_system:
     def from_file(self, file):
         with open(file, 'r') as f:
             n_eq = int(f.readline())
-            n_var = int(f.readline())
+            n_var = int(f.readline()) # may be use it later
             bonds = [i.split(',') for i in f.readline().split()]
             self.variables = set({})
             for bond in bonds:
@@ -256,7 +257,6 @@ class Equation_system:
                 if isinstance(interaction, dict):
                     self.push(interaction, energy)
 
-
     def to_file(self, file, mode='w'):
         with open(file, mode=mode) as f:
             f.write(str(len(self.energy))+'\n')
@@ -279,25 +279,22 @@ class Equation_system:
     def can_i_solve_it(self, variables):
         return len(variables.keys() - self.variables) == 0
 
-
-    def solve(self, centered=True):
+    def solve(self):
         system, ens, order = self.to_matrix()
         try:
-            if centered:
-                mm = ens.mean()
-                return {i: j for i, j in zip(order, np.linalg.lstsq(system, ens-mm, rcond=None)[0])}, mm
             return {i: j for i, j in zip(order, np.linalg.lstsq(system, ens, rcond=None)[0])}
         except np.linalg.LinAlgError:
             return -1
 
+    def find_equation_in_system(self, interaction, get_solution=False):
+        for i, e in enumerate(self.equations):
+            if e == interaction:
+                if get_solution:
+                    return (i, self.energy[i])
+                return i
+        return (-1, -1) if get_solution else -1
 
 def apply_solution(solution: dict, interacted: dict):
-    en = 0
-    for key, item in interacted.items():
-        en += solution[key]*item
-    return en
-
-def apply_read_solution(solution: dict, interacted: list):
     en = 0
     for key, item in interacted.items():
         en += solution[key]*item
@@ -476,7 +473,7 @@ if __name__ == '__main__':
                 apply_change()
         lstl_solver.to_file(saver)
 
-    def read_eqs_path(file_name, to_file, file_eqs, n=15, solve_rel_mean=True):
+    def read_eqs_path(file_name, to_file, file_eqs, n=15):
 
         def apply_change():
             ln.refresh_dimensional()
@@ -486,10 +483,7 @@ if __name__ == '__main__':
                 return -1
             if (not isinstance(interact, float)) and lstl_solver.can_i_solve_it(interact):
                 mops.append(ln.get_energy())
-                if solve_rel_mean:
-                    appr.append(apply_solution(ss, interact)+mean_en)
-                else:
-                    appr.append(apply_solution(ss, interact))
+                appr.append(apply_solution(ss, interact))
                 print(mops[-1])
                 print(appr[-1])
 
@@ -499,10 +493,7 @@ if __name__ == '__main__':
         pr = Molecule(to_file, n=n, divider=divider)
         lstl_solver = Equation_system()
         lstl_solver.from_file(file_eqs)
-        if solve_rel_mean:
-            ss, mean_en = lstl_solver.solve()
-        else:
-            ss = lstl_solver.solve(centered=solve_rel_mean)
+        ss, mean_en = lstl_solver.solve()
         d = ln.notation.diff(pr.notation)
         # print('m', mean_en)
         # print(apply_solution(ss, ln.length_interaction())+mean_en)
@@ -528,51 +519,79 @@ if __name__ == '__main__':
         print(file_name)
 
 
-    def approx_report(report_file, appr=[], mops=[]):
+    def approx_report(report_file, ss, appr=[], mops=[]):
+
         ens, poss = read_report(report_file, xyz=True)
         to_names = poss.pop(0)
         names = [i[0] for i in to_names]
         atoms = [np.array(list(map(float, i[1::]))) for i in to_names]
         interaction = length_xyz_interaction((names, atoms))
         if (not isinstance(interaction, float)) and system.can_i_solve_it(interaction):
-            appr.append(apply_read_solution(ss, interaction))
+            appr.append(apply_solution(ss, interaction))
             mops.append(ens.pop(0))
 
         for en, item in zip(ens, poss):
             atoms = [np.array(list(map(float, i[1::]))) for i in item]
             interaction = length_xyz_interaction((names, atoms))
             if (not isinstance(interaction, float)) and system.can_i_solve_it(interaction):
-                appr.append(apply_read_solution(ss, interaction))
+                appr.append(apply_solution(ss, interaction))
                 mops.append(en)
         return mops, appr
 
     #
     # calc_to_the_aim_path(n)
-    system = Equation_system()
-    system.from_reports(['equations_mn_3a4_0', 'equations_mn_3a4_1'])
-    ss = system.solve(False)
-    print(len(ss))
-    print(len(system.variables))
+    # system = Equation_system()
+    # # system.from_reports(['equations_mn_3a4_0', 'equations_mn_3a4_1'])
+    # system.from_reports(['equations_mn_3a4_0', 'equations_mn_3a4_1'])
+    # ss = system.solve()
+    # print(len(ss))
+    # print(len(system.variables))
 
     # file_name = './ordered_mol2/js_exapmle_init.mol2'
     file_name = './prepared_mols2/3a_opted.mol2'
     # to_file = './ordered_mol2/js_exapmle_finish.mol2'
-    # to_file = './prepared_mols2/4_opted.mol2'
-    # saver = 'equations_mn_3a4_4'
-    # n = 20
+    to_file = './prepared_mols2/4_opted.mol2'
+    saver = 'equations_mnw_3a4_4'
+    trasher = 'all_eqs_0'
+    n = 20
+    system = Equation_system()
+    # system.from_reports(['equations_mn_3a4_0', 'equations_mn_3a4_1'])
+    system.from_reports(['equations_mopac_example_n0', 'equations_mopac_example_n1'])
+    # ens, poss = read_report('equations_mn_3a4_2', xyz=True)
+    ens, poss = read_report('equations_mopac_example_n0', xyz=True)
+    to_names = poss.pop(0)
+    names = [i[0] for i in to_names]
+    atoms = [np.array(list(map(float, i[1::]))) for i in to_names]
+    interaction = length_xyz_interaction((names, atoms))
+    ss = system.solve()
+    mops = [ens[0]]
+    appr = [apply_solution(ss, interaction)]
+    for en, item in zip(ens, poss):
+        atoms = [np.array(list(map(float, i[1::]))) for i in item]
+        interaction = length_xyz_interaction((names, atoms))
+        if isinstance(interaction, dict) and system.can_i_solve_it(interaction):
+            appr.append(apply_solution(ss, interaction))
+            mops.append(en)
+
+    appr = np.array(appr)
+    mops = np.array(mops)
     # divider = Spherical_divider(n)
-    # genetic_to_the_aim(Molecule(file_name, n, divider), Molecule(to_file, n, divider), write=True, file_log=saver)
-    mops, appr = approx_report('equations_mn_3a4_2')
-    #
-    #
-    print(mops)
-    print(appr)
+    # genetic_to_the_aim(Molecule(file_name, n, divider), Molecule(to_file, n, divider), write=True,
+    #  file_log=saver, trash_keeper=trasher)
+
+    print(np.mean([abs(i-j) for i, j in zip(mops, appr)]))
     print(np.corrcoef(np.array(mops), np.array(appr)))
     plt.xlabel('Mopac energy, eV')
     plt.ylabel('Approximate energy, eV')
     plt.scatter(mops, appr)
     plt.show()
 
+    # c = 1 if system.find_equation_in_system(interaction) != -1 else 0
+    # for en, item in zip(ens, poss):
+    #     atoms = [np.array(list(map(float, i[1::]))) for i in item]
+    #     interaction = length_xyz_interaction((names, atoms))
+    #     c += 1 if system.find_equation_in_system(interaction) != -1 else 0
+    # print(c)
 
 
     # # file_name = './prepared_mols2/3a_opted.mol2'
@@ -582,3 +601,45 @@ if __name__ == '__main__':
     # saver = 'equations_mopac_example2'
     # # keep_equations_path(file_name, to_file, saver)
     # read_eqs_path(file_name, to_file, saver, n=20, solve_rel_mean=False)
+
+    def procedure_for_correlate_energies():
+        # file_name = './ordered_mol2/js_exapmle_init.mol2'
+        file_name = './prepared_mols2/3a_opted.mol2'
+        # to_file = './ordered_mol2/js_exapmle_finish.mol2'
+        to_file = './prepared_mols2/4_opted.mol2'
+        saver = 'equations_mnw_3a4_4'
+        trasher = 'all_eqs_0'
+        n = 20
+        system = Equation_system()
+        # system.from_reports(['equations_mn_3a4_0', 'equations_mn_3a4_1'])
+        system.from_reports(['equations_mopac_example_n0', 'equations_mopac_example_n1'])
+        # ens, poss = read_report('equations_mn_3a4_2', xyz=True)
+        ens, poss = read_report('equations_mopac_example_n0', xyz=True)
+        to_names = poss.pop(0)
+        names = [i[0] for i in to_names]
+        atoms = [np.array(list(map(float, i[1::]))) for i in to_names]
+        interaction = length_xyz_interaction((names, atoms))
+        ss = system.solve()
+        mops = [ens[0]]
+        appr = [apply_solution(ss, interaction)]
+        for en, item in zip(ens, poss):
+            atoms = [np.array(list(map(float, i[1::]))) for i in item]
+            interaction = length_xyz_interaction((names, atoms))
+            if isinstance(interaction, dict) and system.can_i_solve_it(interaction):
+                appr.append(apply_solution(ss, interaction))
+                mops.append(en)
+
+        appr = np.array(appr)
+        mops = np.array(mops)
+        # it's for new pathes
+        # divider = Spherical_divider(n)
+        # genetic_to_the_aim(Molecule(file_name, n, divider), Molecule(to_file, n, divider), write=True,
+        #  file_log=saver, trash_keeper=trasher)
+
+        print(np.mean([abs(i - j) for i, j in zip(mops, appr)]))
+        print(np.corrcoef(np.array(mops), np.array(appr)))
+        plt.xlabel('Mopac energy, eV')
+        plt.ylabel('Approximate energy, eV')
+        plt.scatter(mops, appr)
+        plt.show()
+
