@@ -64,7 +64,7 @@ class Spherical_divider():
                 return fs
         return s2
 
-    def set_neighbours(self, eps=1.2):
+    def set_neighbours(self, eps=2):
         for i in range(len(self.scube)-1):
             for j in range(i+1, len(self.scube)):
                 if np.linalg.norm(self.scube[i] - self.scube[j]) < self.d_min_q*eps:
