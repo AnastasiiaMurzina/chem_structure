@@ -142,15 +142,14 @@ if __name__ == '__main__':
     ss = {}
     tstep = []
     import random
-    import cProfile
+    ln = Molecule(file_name, divider=divider)
+    pr = Molecule(to_file, divider=divider)
     
-    for ix in range(5):
+    for ix in range(1):
         random.seed(ix)
         tstep.append(-time())
         if len(system.energy) != 0:
             ss = system.solve()
-        ln = Molecule(file_name, divider=divider)
-        pr = Molecule(to_file, divider=divider)
         approx_genetic_to_the_aim(ln, pr, system, ss, file_log="{0}{1}".format(saver, str(ix)),
                                         trasher=trasher)
         tstep[-1] += time()
