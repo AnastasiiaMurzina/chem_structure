@@ -4,6 +4,7 @@ import os, glob, tempfile, shutil
 # from mol2_chain import write_mol2_file
 
 FNULL = open(os.devnull, 'w')
+
 greece_numericals = {1: 'SINGLET', 2: 'DOUBLET',
                      3: 'TRIPLET', 4: 'QUARTET', 5: 'QUINTET',
                      6: 'SEXTET'}
@@ -173,7 +174,7 @@ def get_heat(mopac_file):
         return float(line.split()[5])
 
 
-def get_energy_of_xyz(xyz_file, tmpdir=''):
+def get_energy_of_xyz(xyz_file, tmpdir='', devnull=True):
     del_flag = False
     if tmpdir == '':
         tmpdir = tempfile.mkdtemp()
@@ -189,7 +190,7 @@ def get_energy_of_xyz(xyz_file, tmpdir=''):
             for _ in range(n):
                 line = f.readline().split()
                 f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(*line))
-    call(['mopac', os.path.join(tmpdir, xyz_to_mop)])
+    call(['mopac', os.path.join(tmpdir, xyz_to_mop)], stdout=FNULL, stderr=FNULL)
     a = get_energy(os.path.join(tmpdir, xyz_to_mop[:-4])+'.out')
     if del_flag: shutil.rmtree(tmpdir)
     return a
@@ -240,7 +241,6 @@ if __name__ == '__main__':
                               'Charge': 0, 'Multiplicity': 1, 'Theory': 'PM7'}
 
 
-    import subprocess
     # print(get_energy_of_mol2('./q_compare/2_no_relax/My_2-Mn-OtBu_opt_q.mol2'))
     # print(get_energy_of_mol2('./q_compare/2_relax/My_2-Mn-OtBu_opt_q.mol2'))
     # print(get_energy_of_mol2('./q_compare/3_no_relax/My_2-Mn-OtBu_opt_q.mol2'))
@@ -259,7 +259,7 @@ if __name__ == '__main__':
             for j in files:
                 name = os.path.join(tmpdir, j[:-5])
                 writeInputFileFromMOL2(options, j, name+'.mop')
-                subprocess.call([mopac_alias, name+'.mop'])
+                call([mopac_alias, name+'.mop'])
                 mopacOut_to_xyz(name, os.path.join(os.getcwd(), 'q_compare', j[:-5:] + '_opt.xyz'))
         shutil.rmtree(tmpdir)
             # files = get_mop_files(i)

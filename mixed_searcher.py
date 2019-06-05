@@ -1,5 +1,6 @@
 import copy
 from tempfile import mkdtemp
+import os
 from time import time
 
 import matplotlib.pyplot as plt
@@ -68,6 +69,7 @@ def approx_genetic_to_the_aim(reactant: Molecule, product: Molecule, system, sol
         else:
             reject_counter += 1
             if reject_chjecker(reject_counter):
+                os.remove(file_log)
                 return -1
         d = react.notation.diff(product.notation)
     while mutant.notation.l_change_step(product.notation) != -1 or mutant.notation.s_change_step(product.notation) != -1:
@@ -77,6 +79,7 @@ def approx_genetic_to_the_aim(reactant: Molecule, product: Molecule, system, sol
         else:
             reject_counter += 1
             if reject_chjecker(reject_counter):
+                os.remove(file_log)
                 return -1
         mutant = copy.deepcopy(react)
     return path
@@ -143,11 +146,10 @@ if __name__ == '__main__':
     saver = 'approx_report_path00_'
     # saver = 'equations_mnw_3a4_4'
     trasher = 'all_eqs_00'
-    n = 20
+    n = 15
     import sys
     system = Equation_system()
     import pickle
-    import os
     cache_file = "divider%d.pkl" % n
     if not os.path.exists(cache_file):
         divider = Spherical_divider(n)

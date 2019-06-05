@@ -292,9 +292,9 @@ class Molecule:
             f.write(str(n) + '\n\n')
             for ix in range(n):
                 f.write('{}\t{}\t{}\t{}\n'.format(names[ix], self.atoms[ix+1].x, self.atoms[ix+1].y, self.atoms[ix+1].z))
-        heat = get_energy_of_xyz(file, tmpdir=tmp)
+        energy = get_energy_of_xyz(file, tmpdir=tmp)
         if del_flag: rmtree(tmp)
-        return heat
+        return energy
 
     def interact_pair(self, distance=1.5, no_less_than=0.5):
         pairs = {}
