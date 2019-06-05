@@ -212,8 +212,8 @@ class Molecule:
                                           length=np.linalg.norm(self.atoms[l[1]].position()
                                                                 - self.atoms[l[2]].position()))})
 
-    def refresh_dimensional(self, relax=True, with_change_notation=False):
-        ds = self.get_dimensional(relax=relax)
+    def refresh_dimensional(self, relax=True, with_change_notation=False, eps=0.01):
+        ds = self.get_dimensional(relax=relax, eps=eps)
         for k, i in ds.items():
             self.atoms[k].x = i[0]
             self.atoms[k].y = i[1]
@@ -256,8 +256,8 @@ class Molecule:
         sections = [i for _, i in c1.items()]
         return not (section in sections)
 
-    def get_dimensional(self, relax=True):
-        return dimensional_structure(self.notation, relax=relax)
+    def get_dimensional(self, relax=True, eps=0.01):
+        return dimensional_structure(self.notation, relax=relax, eps=eps)
 
     def to_mol2(self, mol2file):
         with open(mol2file, 'w') as f:
