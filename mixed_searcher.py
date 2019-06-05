@@ -11,6 +11,9 @@ from quadro_with_rotate_class import Spherical_divider
 from searcher_in_space import Equation_system, apply_solution, length_xyz_interaction, genetic_to_the_aim
 
 
+def reject_chjecker(reject_count):
+    return np.random.random() < 1-2**(-reject_count//10)
+
 def approx_genetic_to_the_aim(reactant: Molecule, product: Molecule, system, solution,
                              file_log='reaction_report', prob_of_approx=0.5, trasher='trasher'):
     """
@@ -18,6 +21,8 @@ def approx_genetic_to_the_aim(reactant: Molecule, product: Molecule, system, sol
     """
     exact_line = '##\n'
     approx_line = '#?\n'
+
+    react = copy.deepcopy(reactant)
 
     def apply_change():
         mutant.refresh_dimensional()
@@ -46,21 +51,34 @@ def approx_genetic_to_the_aim(reactant: Molecule, product: Molecule, system, sol
                 f_w1.write(approx_line if appr_flag else exact_line)
         return flag
 
-    d = reactant.notation.diff(product.notation)
-    path = [reactant.get_energy()]
-    reactant.to_xyz(trasher, title=str(path[-1]), mode='a')
+    d = react.notation.diff(product.notation)
+    path = [react.get_energy()]
+    react.to_xyz(trasher, title=str(path[-1]), mode='a')
     with open(trasher, 'a') as f_e: f_e.write(exact_line)
+    reject_counter = 0
     while d[2] > 0.1 and d[1] != 0:
-        mutant = copy.deepcopy(reactant)
+        mutant = copy.deepcopy(react)
         if np.random.random() < 0.5:
             mutant.notation.s_change_step(product.notation)
         else:
             mutant.notation.l_change_step(product.notation)
-        if apply_change(): reactant = copy.deepcopy(mutant)
-        d = reactant.notation.diff(product.notation)
+        if apply_change():
+            react = copy.deepcopy(mutant)
+            reject_counter = 0
+        else:
+            reject_counter += 1
+            if reject_chjecker(reject_counter):
+                return -1
+        d = react.notation.diff(product.notation)
     while mutant.notation.l_change_step(product.notation) != -1 or mutant.notation.s_change_step(product.notation) != -1:
-        if apply_change(): reactant = copy.deepcopy(mutant)
-        mutant = copy.deepcopy(reactant)
+        if apply_change():
+            react = copy.deepcopy(mutant)
+            reject_counter = 0
+        else:
+            reject_counter += 1
+            if reject_chjecker(reject_counter):
+                return -1
+        mutant = copy.deepcopy(react)
     return path
 
 
@@ -122,9 +140,9 @@ if __name__ == '__main__':
     # file_name = './prepared_mols2/3a_opted.mol2'
     to_file = './ordered_mol2/js_exapmle_finish.mol2'
     # to_file = './prepared_mols2/4_opted.mol2'
-    saver = 'approx_report_path0_'
+    saver = 'approx_report_path00_'
     # saver = 'equations_mnw_3a4_4'
-    trasher = 'all_eqs_0'
+    trasher = 'all_eqs_00'
     n = 20
     import sys
     system = Equation_system()
