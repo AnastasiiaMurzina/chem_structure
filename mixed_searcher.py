@@ -2,6 +2,7 @@ import copy
 from tempfile import mkdtemp
 import os
 from time import time
+from types import SimpleNamespace
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,10 +14,11 @@ from searcher_in_space import Equation_system, apply_solution, length_xyz_intera
 
 
 def reject_chjecker(reject_count):
-    return np.random.random() < 1-2**(-reject_count//10)
+    return reject_count > 10 and np.random.random() < 1-2**(-reject_count//10)
 
 def approx_genetic_to_the_aim(reactant: Molecule, product: Molecule, system, solution,
-                             file_log='reaction_report', prob_of_approx=0.5, trasher='trasher'):
+                             file_log='reaction_report', prob_of_approx=0.99, trasher='trasher',
+                              alpha=10):
     """
     :return: energies_path and length of sections changes
     """
@@ -24,6 +26,7 @@ def approx_genetic_to_the_aim(reactant: Molecule, product: Molecule, system, sol
     approx_line = '#?\n'
 
     react = copy.deepcopy(reactant)
+    counters = SimpleNamespace(exist_eq_counter=0, can_solve_counter=0, approx_counter=0, smop_counter=0)
 
     def apply_change():
         mutant.refresh_dimensional()
@@ -33,30 +36,35 @@ def approx_genetic_to_the_aim(reactant: Molecule, product: Molecule, system, sol
         exist_eq = system.find_equation_in_system(interaction, get_solution=True)
         if exist_eq[0] != -1:
             en = exist_eq[1]
-        elif system.can_i_solve_it(interaction) and np.random.random() < prob_of_approx:
-            en = apply_solution(solution, interaction)
-            appr_flag = True
-        else:
+            counters.exist_eq_counter += 1
+        elif system.can_i_solve_it(interaction):
+            counters.can_solve_counter += 1
+            if np.random.random() < prob_of_approx:
+                counters.approx_counter += 1
+                en = apply_solution(solution, interaction)
+                appr_flag = True
+        if not appr_flag:
             en = mutant.get_energy()
+            counters.smop_counter += 1
             mutant.to_xyz(trasher, title=str(en), mode='a')
             with open(trasher, 'a') as f_e: f_e.write(exact_line)
         if en is None:
             return False
-        delta = en - path[-1]
+        delta = en - en_path[-1]
         flag = False
-        if np.random.random() < np.exp(-delta):
+        if np.random.random() < np.exp(-delta/alpha):
             flag = True
-            path.append(en)
+            en_path.append(en)
             mutant.to_xyz(file_log, title=str(en), mode='a')
             with open(file_log, 'a') as f_w1:
                 f_w1.write(approx_line if appr_flag else exact_line)
         return flag
 
     d = react.notation.diff(product.notation)
-    path = [react.get_energy()]
-    react.to_xyz(trasher, title=str(path[-1]), mode='a')
+    en_path = [react.get_energy()]
+    react.to_xyz(trasher, title=str(en_path[-1]), mode='a')
     with open(trasher, 'a') as f_e: f_e.write(exact_line)
-    reject_counter = 0
+    reject_counter, all_rejects = 0, 0
     while d[2] > 0.1 and d[1] != 0:
         mutant = copy.deepcopy(react)
         if np.random.random() < 0.5:
@@ -68,9 +76,9 @@ def approx_genetic_to_the_aim(reactant: Molecule, product: Molecule, system, sol
             reject_counter = 0
         else:
             reject_counter += 1
+            all_rejects += 1
             if reject_chjecker(reject_counter):
-                os.remove(file_log)
-                return -1
+                return (-1, counters.exist_eq_counter, counters.can_solve_counter, counters.approx_counter, counters.smop_counter, all_rejects)
         d = react.notation.diff(product.notation)
     while mutant.notation.l_change_step(product.notation) != -1 or mutant.notation.s_change_step(product.notation) != -1:
         if apply_change():
@@ -78,11 +86,11 @@ def approx_genetic_to_the_aim(reactant: Molecule, product: Molecule, system, sol
             reject_counter = 0
         else:
             reject_counter += 1
+            all_rejects += 1
             if reject_chjecker(reject_counter):
-                os.remove(file_log)
-                return -1
+                return (-1, counters.exist_eq_counter, counters.can_solve_counter, counters.approx_counter, counters.smop_counter, all_rejects)
         mutant = copy.deepcopy(react)
-    return path
+    return (en_path, counters.exist_eq_counter, counters.can_solve_counter, counters.approx_counter, counters.smop_counter, all_rejects)
 
 
 def read_approx_report(report_name):
@@ -143,9 +151,9 @@ if __name__ == '__main__':
     # file_name = './prepared_mols2/3a_opted.mol2'
     to_file = './ordered_mol2/js_exapmle_finish.mol2'
     # to_file = './prepared_mols2/4_opted.mol2'
-    saver = 'approx_report_path00_'
+    saver = 'approx_report_path7_'
     # saver = 'equations_mnw_3a4_4'
-    trasher = 'all_eqs_00'
+    trasher = 'all_eqs_7'
     n = 15
     import sys
     system = Equation_system()
@@ -161,20 +169,35 @@ if __name__ == '__main__':
 
     ss = {}
     tstep = []
-    import random
     ln = Molecule(file_name, divider=divider)
     pr = Molecule(to_file, divider=divider)
-    
-    for ix in range(1):
-        random.seed(ix)
+    success_paths = 0
+    all_paths = 0
+    print("Exist equation\tCould solve approximately\t Solve approximately\t Mopac solved\tNumber of rejects")
+    while success_paths < 6:
+        random.seed(all_paths+1)
         tstep.append(-time())
         if len(system.energy) != 0:
             ss = system.solve()
-        approx_genetic_to_the_aim(ln, pr, system, ss, file_log="{0}{1}".format(saver, str(ix)),
-                                        trasher=trasher)
+        file_log = "{0}{1}".format(saver, str(success_paths))
+        path, c_eq, c_can, c_calc, m_calc, rejs = approx_genetic_to_the_aim(ln, pr, system, ss, file_log=file_log, trasher=trasher)
+        all_paths += 1
         tstep[-1] += time()
         system = Equation_system()
         system.from_reports([trasher])
+        if isinstance(path, int):
+            try:
+                os.remove(file_log)
+            except FileNotFoundError:
+                pass
+            print('Path {}.Failed path'.format(str(all_paths)))
+            print('{}\t{}\t{}\t{}\t{}'.format(str(c_eq), str(c_can), str(c_calc), str(m_calc), str(rejs)))
+            continue
+
+        print('Successful {}th path'.format(str(success_paths)))
+        print('{}\t{}\t{}\t{}\t{}'.format(str(c_eq), str(c_can), str(c_calc), str(m_calc), str(rejs)))
+        print('TS energy is ', str(max(path)))
+        success_paths += 1
 
     print(tstep)
 
