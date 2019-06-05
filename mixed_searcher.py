@@ -151,9 +151,9 @@ if __name__ == '__main__':
     # file_name = './prepared_mols2/3a_opted.mol2'
     to_file = './ordered_mol2/js_exapmle_finish.mol2'
     # to_file = './prepared_mols2/4_opted.mol2'
-    saver = 'approx_report_path7_'
+    saver = 'approx_report_path1_'
     # saver = 'equations_mnw_3a4_4'
-    trasher = 'all_eqs_7'
+    trasher = 'all_eqs_1'
     n = 15
     import sys
     system = Equation_system()

@@ -155,7 +155,7 @@ class Notation:
             indx = np.random.randint(len(s_d))
             k_1, inx, j = s_d[indx]
             if little:
-                j = self.divider.nearest_from_to(self.bonds[k_1][inx].section, j)
+                j = self.divider.nearest_from_to2(self.bonds[k_1][inx].section, j)
             self.notation[k_1][inx] = j
             self.bonds[k_1][inx].set_section(j)
             self.bonds[inx][k_1].set_section(self.divider.anti_scube[j])
