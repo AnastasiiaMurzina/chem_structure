@@ -82,6 +82,8 @@ def read_approx_report(report_name):
 
 
 if __name__ == '__main__':
+    import random
+
 
     def calc_to_the_aim_path(n):
         divider = Spherical_divider(n=n)
@@ -124,11 +126,26 @@ if __name__ == '__main__':
     # saver = 'equations_mnw_3a4_4'
     trasher = 'all_eqs_0'
     n = 20
+    import sys
     system = Equation_system()
-    divider = Spherical_divider(n)
+    import pickle
+    import os
+    cache_file = "divider%d.pkl" % n
+    if not os.path.exists(cache_file):
+        divider = Spherical_divider(n)
+        with open(cache_file, 'wb') as outp:
+            pickle.dump(divider, outp, pickle.HIGHEST_PROTOCOL)
+    else:
+        with open(cache_file, 'rb') as inp:
+            divider = pickle.load(inp)
+
     ss = {}
     tstep = []
+    import random
+    import cProfile
+    
     for ix in range(5):
+        random.seed(ix)
         tstep.append(-time())
         if len(system.energy) != 0:
             ss = system.solve()

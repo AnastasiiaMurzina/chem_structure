@@ -189,7 +189,7 @@ def get_energy_of_xyz(xyz_file, tmpdir=''):
             for _ in range(n):
                 line = f.readline().split()
                 f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(*line))
-    call(['/opt/mopac2/run_mopac', os.path.join(tmpdir, xyz_to_mop)])
+    call(['mopac', os.path.join(tmpdir, xyz_to_mop)])
     a = get_energy(os.path.join(tmpdir, xyz_to_mop[:-4])+'.out')
     if del_flag: shutil.rmtree(tmpdir)
     return a
@@ -211,7 +211,7 @@ def get_heat_of_xyz(xyz_file, tmpdir=''):
             for _ in range(n):
                 line = f.readline().split()
                 f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(*line))
-    call(['/opt/mopac2/run_mopac', os.path.join(tmpdir, xyz_to_mop)])
+    call(['run_mopac', os.path.join(tmpdir, xyz_to_mop)])
     a = get_heat(os.path.join(tmpdir, name)+'.out')
     if del_flag: shutil.rmtree(tmpdir)
     return a
@@ -251,7 +251,7 @@ if __name__ == '__main__':
     # print(get_energy_of_mol2('./q_compare/5_relax/My_2-Mn-OtBu_opt_q.mol2'))
     # print(get_energy_of_mol2('./tmp/My_2-Mn-OtBu_opt_q.mol2'))
     def run_mopac():
-        mopac_alias = '/opt/mopac/run_script.sh'
+        mopac_alias = 'mopac'
         tmpdir = tempfile.mkdtemp()
         g_dir = os.path.join(os.getcwd(), 'q_compare')
         for i in [x[0] for x in os.walk(g_dir)]:
