@@ -320,7 +320,7 @@ class Molecule:
         :return: pair of atoms nums with zero bonds
         '''
         zero_pairs = []
-        for _, i in self.bonds.items():
+        for _, i in self.notation.bonds.items():
             for _, iinner in i.items():
                 if iinner.attr == '0':
                     zero_pairs.append(i.connected)

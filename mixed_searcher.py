@@ -1,15 +1,11 @@
 import copy
-from tempfile import mkdtemp
 import os
-import sys
 from time import time
 from types import SimpleNamespace
 
-import matplotlib.pyplot as plt
 import numpy as np
 
-from layouter import dimensional_structure
-from mol_api import Molecule, compare_structers
+from mol_api import Molecule
 from quadro_with_rotate_class import Spherical_divider
 from searcher_in_space import Equation_system, apply_solution, length_xyz_interaction, genetic_to_the_aim
 

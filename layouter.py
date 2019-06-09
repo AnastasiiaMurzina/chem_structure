@@ -75,13 +75,4 @@ def dimensional_structure(notation, relax=True, eps=0.01):
 
 
 if __name__ == '__main__':
-    # name_sh = '4c-Mn-OMe'
-    # names = ['Caffein', 'Naphthalene', 'Phenol', '4c-Mn-OMe', '3-MnH2', '2-Mn-OtBu', 'Mn-deprot-Mn-bare', 'Heroin_2']
-    names = ['4c-Mn-OMe', '3-MnH2', '2-Mn-OtBu', 'Mn-deprot-Mn-bare']
-    # names = ['H2']
-    for name_sh in names:
-        file_name = './tmp/'+name_sh+'_opt'
-        name = name_sh+'_opt'
-        # file_name = name_sh
-        # file_name = name
-        n_param = 6
+    pass

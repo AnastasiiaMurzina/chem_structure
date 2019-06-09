@@ -1,5 +1,4 @@
 import numpy as np
-from copy import deepcopy
 import rmsd
 
 
@@ -30,7 +29,7 @@ def bonds_of_paired(bonds):
     return paired_bonds
 
 
-def xyz_names(file_name):
+def xyz_names(file_name, names_flag=False):
     positions = read_mol2(file_name)[1].split()[1::]
     names = {}
     xyz = {}
@@ -40,7 +39,7 @@ def xyz_names(file_name):
         xyz.update({int(positions[ns*i]): np.array([float(positions[ns*i+2]),
                                                  float(positions[ns * i + 3]),
                                                  float(positions[ns * i + 4])])})
-    return xyz # , names
+    return (xyz, names) if names_flag else xyz
 
 class Atom():
     def __init__(self, name, name_with_i, i1, i2, i3):

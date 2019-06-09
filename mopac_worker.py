@@ -1,7 +1,5 @@
 from subprocess import call
 import os, glob, tempfile, shutil
-# from mol2_worker import *
-# from mol2_chain import write_mol2_file
 
 FNULL = open(os.devnull, 'w')
 
@@ -136,12 +134,6 @@ def mopacOut_to_xyz(mopac_file, outXYZ_file):
         info = farc.readline().split()
         count = int(info[-2])
         formula = (info[:-3])
-
-    # with open(mopac_file+'.out', 'r') as f:
-    #     for _ in range(8):
-    #         f.readline()
-    #     info = f.readline().split()
-
     with open(mopac_file + '.out', 'r') as f:
         next(l for l in f if 'CARTESIAN COORDINATES' in l)
         next(l for l in f if 'CARTESIAN COORDINATES' in l)
@@ -164,11 +156,11 @@ def get_energy(mopac_file):
         energy = float(line.split()[-2])
     return energy
 
+
 def get_heat(mopac_file):
     with open(mopac_file, 'r') as f:
         try:
             line = next(l for l in f if 'FINAL HEAT OF FORMATION' in l)
-
         except:
             return None
         return float(line.split()[5])
@@ -179,8 +171,8 @@ def get_energy_of_xyz(xyz_file, tmpdir='', devnull=True):
     if tmpdir == '':
         tmpdir = tempfile.mkdtemp()
         del_flag = True
-    name = os.path.basename(os.path.normpath(xyz_file))
-    xyz_to_mop = os.path.join(tmpdir, name[:-4:] + '.mop')
+        file_name = os.path.basename(os.path.normpath(xyz_file))
+    xyz_to_mop = os.path.join(tmpdir, file_name[:-4:] + '.mop')
     header = ' AUX LARGE CHARGE=0 NOOPT PM7\nTitle\n'
     with open(xyz_file, 'r') as f:
         with open(os.path.join(tmpdir, xyz_to_mop), 'w') as f_w:
@@ -201,8 +193,8 @@ def get_heat_of_xyz(xyz_file, tmpdir=''):
     if tmpdir == '':
         tmpdir = tempfile.mkdtemp()
         del_flag = True
-    name = os.path.basename(os.path.normpath(xyz_file))
-    xyz_to_mop = os.path.join(tmpdir, name + '.mop')
+        file_name = os.path.basename(os.path.normpath(xyz_file))
+    xyz_to_mop = os.path.join(tmpdir, file_name  + '.mop')
     header = ' AUX LARGE CHARGE=0 NOOPT PM7\nTitle\n'
     with open(xyz_file, 'r') as f:
         with open(os.path.join(tmpdir, xyz_to_mop), 'w') as f_w:
@@ -213,25 +205,25 @@ def get_heat_of_xyz(xyz_file, tmpdir=''):
                 line = f.readline().split()
                 f_w.write('{}\t{}\t0\t{}\t0\t{}\t0\n'.format(*line))
     call(['run_mopac', os.path.join(tmpdir, xyz_to_mop)])
-    a = get_heat(os.path.join(tmpdir, name)+'.out')
+    a = get_heat(os.path.join(tmpdir, file_name )+'.out')
     if del_flag: shutil.rmtree(tmpdir)
     return a
 
 
 def get_energy_of_mol2(mol2_file):
     tmpdir = tempfile.mkdtemp()
-    name = os.path.basename(os.path.normpath(mol2_file))
-    xyz_to_mop = os.path.join(tmpdir, name[:-5:] + '.xyz')
+    file_name = os.path.basename(os.path.normpath(mol2_file))
+    xyz_to_mop = os.path.join(tmpdir, file_name[:-5:] + '.xyz')
     call(['babel', '-imol2', mol2_file, '-oxyz', xyz_to_mop])
     return get_energy_of_xyz(xyz_to_mop, tmpdir=tmpdir)
 
 
-def get_xyz_files(dir):
-    return glob.glob(dir+'/*.xyz')
+def get_xyz_files(directory):
+    return glob.glob(directory+'/*.xyz')
 
 
-def get_mop_files(dir):
-    return glob.glob(dir+'/*.mop')
+def get_mop_files(directory):
+    return glob.glob(directory+'/*.mop')
 
 
 
@@ -240,16 +232,6 @@ if __name__ == '__main__':
     options = {'Title': 'Smth info about optimization', 'Calculation Type': 'Single Point',
                               'Charge': 0, 'Multiplicity': 1, 'Theory': 'PM7'}
 
-
-    # print(get_energy_of_mol2('./q_compare/2_no_relax/My_2-Mn-OtBu_opt_q.mol2'))
-    # print(get_energy_of_mol2('./q_compare/2_relax/My_2-Mn-OtBu_opt_q.mol2'))
-    # print(get_energy_of_mol2('./q_compare/3_no_relax/My_2-Mn-OtBu_opt_q.mol2'))
-    # print(get_energy_of_mol2('./q_compare/3_relax/My_2-Mn-OtBu_opt_q.mol2'))
-    # print(get_energy_of_mol2('./q_compare/4_no_relax/My_2-Mn-OtBu_opt_q.mol2'))
-    # print(get_energy_of_mol2('./q_compare/4_relax/My_2-Mn-OtBu_opt_q.mol2'))
-    # print(get_energy_of_mol2('./q_compare/5_no_relax/My_2-Mn-OtBu_opt_q.mol2'))
-    # print(get_energy_of_mol2('./q_compare/5_relax/My_2-Mn-OtBu_opt_q.mol2'))
-    # print(get_energy_of_mol2('./tmp/My_2-Mn-OtBu_opt_q.mol2'))
     def run_mopac():
         mopac_alias = 'mopac'
         tmpdir = tempfile.mkdtemp()
@@ -262,95 +244,20 @@ if __name__ == '__main__':
                 call([mopac_alias, name+'.mop'])
                 mopacOut_to_xyz(name, os.path.join(os.getcwd(), 'q_compare', j[:-5:] + '_opt.xyz'))
         shutil.rmtree(tmpdir)
-            # files = get_mop_files(i)
-            # for j in files:
-            #     subprocess.call([mopac_alias, j])
+
     for i in ['2-Mn-OtBu_opt.mol2', '3-MnH2_opt.mol2', '4c-Mn-OMe_opt.mol2']:
         name = os.path.join('./tmp', i)
         print(i, get_energy_of_mol2(name))
-    # g_dir = os.path.join(os.getcwd(), 'q_compare')
-    # name = '2-Mn-OtBu_opt_q'
-    # for i in [x[0] for x in os.walk(g_dir)]:
-    #     files = glob.glob(i+'/*_opt.xyz')
-    #     for j in files:
-    #         print(j, get_energy_of_xyz(j))
 
-    # run_mopac()
 
     def get_opt():
         g_dir = os.path.join(os.getcwd(), 'mols_dir', 'Molecules')
-        # g_dir2 = os.path.join(os.getcwd(), 'mols_dir', 'Molecules_Mopt')
         for i in [x[0] for x in os.walk(g_dir)][1::]:
             cur_d = os.path.join(g_dir, i.split('/')[-1])
-            # os.mkdir(cur_d)
             files = glob.glob(i+'/*.arc')
             for j in files:
                 mopacOut_to_xyz(j[:-4:], os.path.join(cur_d, j[:-4:]+'_opt.xyz'))
 
-    # get_opt()
-    # g_dir = os.path.join(os.getcwd(), 'mols_dir', 'Molecules')
-    # print([x[0] for x in os.walk(g_dir)][30])
-    # k = 0
-    # for i in [x[0] for x in os.walk(g_dir)]:
-    #     k+=1
-    #     print(k, i)
-
-            # with open(j, 'r') as f:
-            #     n = int(f.readline())
-            #     f.readline()
-            #     lines = []
-            #     for _ in range(n):
-            #         lines.append(f.readline().split())
-            # title = options['Title']
-            # calculate = options['Calculation Type']
-            # theory = options['Theory']
-            # multiplicity = options['Multiplicity']
-            # charge = options['Charge']
-            # output = ''
-            # multStr = greece_numericals.get(multiplicity, 'SINGLET')
-            # calcStr = calculations[calculate]
-            # if options.get('TS'):
-            #     output += ' AUX LARGE CHARGE=%d %s %s %s %s\n' % \
-            #               (charge, multStr, calcStr, theory, options['TS'])
-            # else:
-            #     output += ' AUX LARGE CHARGE=%d %s %s %s\n' % \
-            #               (charge, multStr, calcStr, theory)
-            # output += '%s\n\n' % title
-            #
-            # if calculate == 'Single Point':
-            #     for i in lines:
-            #         output += '  {0}\t{1}\t0\t{2}\t0\t{3}\t0\n'.format(i[0], i[1], i[2], i[3])
-            # print(os.path.join(tmpdir, j[:-3:]+'mop'))
-            # with open(os.path.join(tmpdir, j[:-3:]+'mop'), 'w') as f_w:
-            #
-            #     f_w.writelines(output)
-
-
-    # writeInputFile(options, )
-    # mopacOut_to_xyz('/home/anastasiia/PycharmProjects/chem_structure/tmp/TS-2b-2c_step1', '/home/anastasiia/PycharmProjects/chem_structure/tmp/TS-2b-2c_step1_from_out.xyz')
-
-    # file1 = 'Aniline_cart_av'
-    # file2 = 'Aniline_zmax_av'
-    # energy1 = mopacOut_to_xyz(file1, file1 + '_opt.xyz')
-    # energy2 = mopacOut_to_xyz(file2, file2 + '_opt.xyz')
-    # print(energy1, energy2)
-    # call(['babel', '-ixyz', file1+'_opt.xyz', '-omol', file1 + '_opt.mol'])
-    # call(['babel', '-ixyz', file2+'_opt.xyz', '-omol', file2 + '_opt.mol'])
-    # call(['./shaep', '-q', file1 + '_opt.mol', file2 + '_opt.mol', 'output'])
-
-
-
-    # file_name = 'My_Aniline.mol2'
-    # positions = xyz_names(file_name)
-    # bonds, names = xyz_names_bonds(file_name)
-    # atom_info = atoms_and_bonds(file_name)
-    # mopac_file_name = 'My_Aniline'
-
-    # writeInputFile(options, positions, names, mopac_file_name+'.mop')
-    # call(['/opt/mopac/run_script.sh', mopac_file_name + '.mop'],
-    #             stdout=FNULL)
-    # energy = mopacOut_to_xyz(mopac_file_name, 'My_Aniline_opt.xyz')
-    # print(energy)
     pass
 
 
