@@ -4,7 +4,6 @@ import tempfile
 from shutil import rmtree
 from searcher_in_space import read_report
 from mopac_worker import get_energy_of_xyz
-import matplotlib.pyplot as plt
 
 def read_approx_report(report_name, xyz):
     with open(report_name, 'r') as f:
