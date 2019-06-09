@@ -18,6 +18,7 @@ def get_linear_path_energies(reactant, names, product, n=10):
     for ind in x:
         current_state = [f + vp * ind / n for f, vp in zip(vbegin, vector_to_product)]
         with open(tmp_file, 'w') as f:
+
             f.write(str(mols) + '\n\n')
             for inx in range(mols):
                 f.write('{}\t{}\t{}\t{}\n'.format(names[inx], *current_state[inx]))
@@ -94,7 +95,7 @@ def linear_line(reactant, product, product_name='', reactant_name=''):
     # energy = get_energy_of_xyz('/home/anastasiia/PycharmProjects/chem_structure/article_xyz/TS-3a-4.xyz')
     # plt.plot(x, [energy]*len(x))
     plt.xlabel('steps')
-    plt.ylabel('kkal/mol')
+    plt.ylabel('kcal/mol')
     plt.title(reactant_name+'->'+product_name+' linear path in free Gibbs energy')
     plt.show()
     print('free Gibbs energy - E_zpe threshold of reaction ', max(y) - y[0])
@@ -138,16 +139,24 @@ if __name__ == "__main__":
     # four = four_mol.to_positions_array()
 
 
-    three_a = mol2_worker.xyz_to_array('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/3a_scaled_opted.xyz')
+
+
+    three_a, n = mol2_worker.xyz_to_array('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/3a_opted.xyz', names=True)
     four = mol2_worker.xyz_to_array('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/4_opted.xyz')
     ts_3a_4 =  mol2_worker.xyz_to_array('/home/anastasiia/PycharmProjects/chem_structure/article_xyz/TS-3a-4.xyz')
 
+    # three_a, n = mol2_worker.xyz_to_array('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_init.xyz', names=True)
+    # four = mol2_worker.xyz_to_array('/home/anastasiia/PycharmProjects/chem_structure/ordered_mol2/js_exapmle_finish.xyz')
+    # ts_3a_4 =  mol2_worker.xyz_to_array('/home/anastasiia/PycharmProjects/chem_structure/article_xyz/TS-3a-4.xyz')
+
     # seven = mol2_worker.xyz_to_array('./ordered_mol2/7_opted.xyz')
     # eight = mol2_worker.xyz_to_array('./ordered_mol2/8-Mn-ads-EtOH_opted.xyz')
-
-    linear_line(three_a, four, reactant_name='3a', product_name='4')
-    # x, y = get_linear_path_energies(three_a, four, n=10)
-    # show_path_energies(x, y, reactant_name='3a', product_name='4', article_TS_energy=[-4704.37]*10)
+    # linear_line(three_a, four, reactant_name='3a', product_name='4')
+    # linear_line(three_a, four, reactant_name='3a', product_name='4')
+    x, y = get_linear_path_energies(three_a, n, four, n=515)
+    print(x)
+    print(y)
+    # show_path_energies(list(range(y)), y, reactant_name='3a', product_name='4', article_TS_energy=[-4704.37]*30)
 
     # linear_line(seven, eight, reactant_name='7', product_name='8')
 

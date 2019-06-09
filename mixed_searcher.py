@@ -1,6 +1,7 @@
 import copy
 from tempfile import mkdtemp
 import os
+import sys
 from time import time
 from types import SimpleNamespace
 
@@ -12,9 +13,8 @@ from mol_api import Molecule, compare_structers
 from quadro_with_rotate_class import Spherical_divider
 from searcher_in_space import Equation_system, apply_solution, length_xyz_interaction, genetic_to_the_aim
 
-
 def reject_chjecker(reject_count):
-    return reject_count > 10 and np.random.random() < 1-2**(-reject_count//10)
+    return reject_count > 20 and np.random.random() < 1-2**(-reject_count//10)
 
 def approx_genetic_to_the_aim(reactant: Molecule, product: Molecule, system, solution,
                              file_log='reaction_report', prob_of_approx=0.99, trasher='trasher',
@@ -104,9 +104,12 @@ def read_approx_report(report_name):
             for _ in range(k):
                 mol.append(f.readline().split())
             accurance.append(not ('?' in f.readline()))
-            flag = f.readline().isdigit()
+            flag = f.readline().replace('\n','').isdigit()
             poss.append(mol)
-            ens.append(float(f.readline()))
+            e = f.readline()
+            if e!='':
+                ens.append(float(e))
+            else: flag = False
     return (ens, poss, accurance)
 
 
@@ -140,22 +143,14 @@ if __name__ == '__main__':
         print(max(ms))
         # print(kk, max(ms))
 
-    # system = Equation_system()
-    # # system.from_reports(['equations_mn_3a4_0', 'equations_mn_3a4_1'])
-    # system.from_reports(['equations_mn_3a4_0', 'equations_mn_3a4_1'])
-    # ss = system.solve()
-    # print(len(ss))
-    # print(len(system.variables))
-
-    file_name = './ordered_mol2/js_exapmle_init.mol2'
     # file_name = './prepared_mols2/3a_opted.mol2'
-    to_file = './ordered_mol2/js_exapmle_finish.mol2'
     # to_file = './prepared_mols2/4_opted.mol2'
-    saver = 'approx_report_path1_'
-    # saver = 'equations_mnw_3a4_4'
-    trasher = 'all_eqs_1'
-    n = 15
-    import sys
+    file_name = './ordered_mol2/js_exapmle_init.mol2'
+    to_file = './ordered_mol2/js_exapmle_finish.mol2'
+    # saver = 'approx_report_path__2_'
+    saver = 'mequations_mopw_3a4_m40'
+    trasher = 'mall_eqs_mopn_mop40'
+    n = 13
     system = Equation_system()
     import pickle
     cache_file = "divider%d.pkl" % n
@@ -173,14 +168,17 @@ if __name__ == '__main__':
     pr = Molecule(to_file, divider=divider)
     success_paths = 0
     all_paths = 0
+    random_bias = 97
+    tss = []
+    print('mopac calc2')
     print("Exist equation\tCould solve approximately\t Solve approximately\t Mopac solved\tNumber of rejects")
-    while success_paths < 6:
-        random.seed(all_paths+1)
+    while success_paths < 1:
+        random.seed(all_paths+100+random_bias)
         tstep.append(-time())
         if len(system.energy) != 0:
             ss = system.solve()
         file_log = "{0}{1}".format(saver, str(success_paths))
-        path, c_eq, c_can, c_calc, m_calc, rejs = approx_genetic_to_the_aim(ln, pr, system, ss, file_log=file_log, trasher=trasher)
+        path, c_eq, c_can, c_calc, m_calc, rejs = approx_genetic_to_the_aim(ln, pr, system, ss, file_log=file_log, trasher=trasher, alpha=30.)
         all_paths += 1
         tstep[-1] += time()
         system = Equation_system()
@@ -196,11 +194,27 @@ if __name__ == '__main__':
 
         print('Successful {}th path'.format(str(success_paths)))
         print('{}\t{}\t{}\t{}\t{}'.format(str(c_eq), str(c_can), str(c_calc), str(m_calc), str(rejs)))
-        print('TS energy is ', str(max(path)))
+        ts = max(path)
+        print('TS energy is ', str(ts))
+        tss.append(ts)
         success_paths += 1
 
     print(tstep)
+    print(tss)
 
+    # while success_paths < 30 or sum(tstep) < 16000:
+    #     random.seed(all_paths + 101+random_bias)
+    #     tstep.append(-time())
+    #     file_log = "{0}{1}".format(saver, str(success_paths))
+    #     path = genetic_to_the_aim(ln, pr, file_log=file_log)
+    #     all_paths += 1
+    #     tstep[-1] += time()
+    #     print('Successful {}th path'.format(str(success_paths)))
+    #     print('TS energy is ', str(max(path)))
+    #     success_paths += 1
+    #
+    # print(tstep)
+    # print(tss)
 
 
 
