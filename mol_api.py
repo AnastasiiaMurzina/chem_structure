@@ -1,8 +1,6 @@
 import os
 from tempfile import mkdtemp
 from shutil import rmtree
-import matplotlib.pyplot as plt
-from itertools import combinations
 
 from layouter import *
 from mol2_worker import read_mol2, Atom, xyz_names_bonds, compare_structers, Bond, bonds_to_dict
